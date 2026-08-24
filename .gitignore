@@ -1,0 +1,35 @@
+# zavisnosti
+/node_modules
+
+# Next.js build izlaz
+/.next/
+/out/
+next-env.d.ts
+
+# produkcioni build
+/build
+
+# testovi
+/coverage
+
+# env fajlovi sa tajnama (.env.example se komituje)
+.env
+.env*.local
+
+# deployment
+.vercel
+
+# TypeScript
+*.tsbuildinfo
+
+# editor i operativni sistem
+.vscode
+.idea
+.DS_Store
+Thumbs.db
+
+# logovi
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.pem
