@@ -1,0 +1,11 @@
+// Prisma sema je jedinstven izvor istine o strukturi baze.
+// Iz nje se generise tipizovan klijent (prisma generate) i migracije (prisma migrate).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
