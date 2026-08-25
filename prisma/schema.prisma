@@ -9,3 +9,24 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
+
+// Uloge u sistemu. Svaka odredjuje sta korisnik sme da radi (vidi middleware.ts).
+enum Role {
+  ADMIN // administrator ustanove - upravlja nalozima
+  DOCTOR // lekar - kreira preglede, dijagnoze i recepte
+  NURSE // medicinska sestra - termini, laboratorijski nalazi
+  PATIENT // pacijent - vidi iskljucivo sopstveni karton
+}
+
+// Zajednicki nalog za sve uloge. Podaci specificni za pacijenta odnosno doktora
+// nalaze se u odvojenim profilnim tabelama (dodaju se u sledecoj migraciji).
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String // nikada se ne vraca kroz API - cuva se samo bcrypt hes
+  fullName     String
+  role         Role     @default(PATIENT)
+  phone        String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
