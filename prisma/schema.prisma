@@ -18,6 +18,25 @@ enum Role {
   PATIENT // pacijent - vidi iskljucivo sopstveni karton
 }
 
+// Zivotni ciklus termina: pacijent trazi -> osoblje potvrdjuje -> pregled se obavlja.
+enum AppointmentStatus {
+  REQUESTED // pacijent poslao zahtev za termin
+  CONFIRMED // sestra ili doktor potvrdili termin
+  COMPLETED // pregled obavljen
+  CANCELLED // termin otkazan
+}
+
+enum LabResultStatus {
+  PENDING // doktor narucio nalaz, rezultat jos nije unet
+  COMPLETED // sestra unela rezultat
+}
+
+enum AllergySeverity {
+  MILD
+  MODERATE
+  SEVERE
+}
+
 // Zajednicki nalog za sve uloge. Podaci specificni za pacijenta odnosno doktora
 // nalaze se u odvojenim profilnim tabelama (dodaju se u sledecoj migraciji).
 model User {
@@ -33,6 +52,14 @@ model User {
   // Korisnik ima najvise jedan profil, i to onaj koji odgovara njegovoj ulozi.
   patientProfile PatientProfile?
   doctorProfile  DoctorProfile?
+
+  // Isti korisnik moze biti i pacijent i doktor u tabeli termina, pa se relacije
+  // moraju imenovati da bi Prisma znala koja kolona vodi ka kojoj strani.
+  appointmentsAsPatient Appointment[]   @relation("PatientAppointments")
+  appointmentsAsDoctor  Appointment[]   @relation("DoctorAppointments")
+  medicalRecords        MedicalRecord[] @relation("DoctorRecords")
+  labResultsRequested   LabResult[]     @relation("DoctorLabRequests")
+  labResultsUploaded    LabResult[]     @relation("NurseUploads")
 }
 
 // Podaci koji postoje samo za pacijenta. Odvojeni su od naloga da tabela User
@@ -51,7 +78,10 @@ model PatientProfile {
 
   // onDelete: Cascade - brisanjem naloga nestaje i njegov profil, jer profil
   // bez naloga nema smisla i ostao bi kao "siroce" u bazi.
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  medicalRecords MedicalRecord[]
+  labResults     LabResult[]
+  allergies      Allergy[]
 }
 
 // Podaci koji postoje samo za lekara.
@@ -64,4 +94,85 @@ model DoctorProfile {
   createdAt      DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// Zakazani termin kod lekara. Pacijent ga trazi, osoblje potvrdjuje ili otkazuje.
+model Appointment {
+  id             String            @id @default(cuid())
+  patientId      String
+  doctorId       String
+  scheduledAt    DateTime
+  reasonForVisit String
+  status         AppointmentStatus @default(REQUESTED)
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  patient       User           @relation("PatientAppointments", fields: [patientId], references: [id])
+  doctor        User           @relation("DoctorAppointments", fields: [doctorId], references: [id])
+  medicalRecord MedicalRecord?
+}
+
+// Jedan pregled u kartonu pacijenta - srce cele aplikacije.
+model MedicalRecord {
+  id               String   @id @default(cuid())
+  appointmentId    String?  @unique
+  patientProfileId String
+  doctorId         String
+  visitDate        DateTime @default(now())
+  symptoms         String
+  diagnosisName    String
+  therapyNotes     String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  // Termin je opcion: pregled moze nastati i bez prethodnog zakazivanja (hitan slucaj).
+  appointment    Appointment?   @relation(fields: [appointmentId], references: [id])
+  patientProfile PatientProfile @relation(fields: [patientProfileId], references: [id])
+  doctor         User           @relation("DoctorRecords", fields: [doctorId], references: [id])
+  prescriptions  Prescription[]
+}
+
+// Lek propisan u okviru jednog pregleda. Jedan pregled moze imati vise lekova.
+model Prescription {
+  id              String   @id @default(cuid())
+  medicalRecordId String
+  medicationName  String
+  dosage          String
+  frequency       String
+  durationDays    Int
+  notes           String?
+  createdAt       DateTime @default(now())
+
+  medicalRecord MedicalRecord @relation(fields: [medicalRecordId], references: [id], onDelete: Cascade)
+}
+
+// Laboratorijski nalaz: doktor ga narucuje, sestra unosi rezultat.
+model LabResult {
+  id                  String          @id @default(cuid())
+  patientProfileId    String
+  requestedByDoctorId String
+  uploadedByNurseId   String?
+  testType            String
+  resultValue         String?
+  resultUnit          String?
+  referenceRange      String?
+  status              LabResultStatus @default(PENDING)
+  testDate            DateTime        @default(now())
+  createdAt           DateTime        @default(now())
+
+  patientProfile    PatientProfile @relation(fields: [patientProfileId], references: [id])
+  requestedByDoctor User           @relation("DoctorLabRequests", fields: [requestedByDoctorId], references: [id])
+  uploadedByNurse   User?          @relation("NurseUploads", fields: [uploadedByNurseId], references: [id])
+}
+
+// Alergija pacijenta - prikazuje se kao upozorenje pri svakom pregledu.
+model Allergy {
+  id               String          @id @default(cuid())
+  patientProfileId String
+  allergen         String
+  severity         AllergySeverity @default(MILD)
+  notes            String?
+  createdAt        DateTime        @default(now())
+
+  patientProfile PatientProfile @relation(fields: [patientProfileId], references: [id], onDelete: Cascade)
 }
