@@ -29,4 +29,39 @@ model User {
   phone        String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+
+  // Korisnik ima najvise jedan profil, i to onaj koji odgovara njegovoj ulozi.
+  patientProfile PatientProfile?
+  doctorProfile  DoctorProfile?
+}
+
+// Podaci koji postoje samo za pacijenta. Odvojeni su od naloga da tabela User
+// ne bi bila puna kolona koje su za doktore i sestre uvek prazne.
+model PatientProfile {
+  id                    String   @id @default(cuid())
+  userId                String   @unique
+  jmbg                  String
+  dateOfBirth           DateTime
+  bloodType             String?
+  address               String?
+  emergencyContactName  String?
+  emergencyContactPhone String?
+  insuranceNumber       String?
+  createdAt             DateTime @default(now())
+
+  // onDelete: Cascade - brisanjem naloga nestaje i njegov profil, jer profil
+  // bez naloga nema smisla i ostao bi kao "siroce" u bazi.
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// Podaci koji postoje samo za lekara.
+model DoctorProfile {
+  id             String   @id @default(cuid())
+  userId         String   @unique
+  specialization String
+  licenseNumber  String
+  officeRoom     String?
+  createdAt      DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
