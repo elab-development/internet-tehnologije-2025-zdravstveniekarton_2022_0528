@@ -1,8 +1,21 @@
 import Link from 'next/link';
 
-export default function HomePage() {
+// searchParams stize automatski iz URL-a. Middleware pri odbijenom pristupu
+// preusmerava ovde sa ?greska=nemate-pristup, pa se poruka prikazuje korisniku.
+export default function HomePage({ searchParams }: { searchParams: { greska?: string } }) {
+  const accessDenied = searchParams.greska === 'nemate-pristup';
+
   return (
     <main className="mx-auto flex min-h-screen max-w-3xl flex-col justify-center px-6">
+      {accessDenied && (
+        <p
+          role="alert"
+          className="mb-6 rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800"
+        >
+          Nemate ovlascenje za pristup toj stranici.
+        </p>
+      )}
+
       <h1 className="text-4xl font-bold text-sky-800">Zdravstveni e-Karton</h1>
       <p className="mt-4 text-lg text-slate-600">
         Elektronski zdravstveni karton za pacijente, doktore, medicinske sestre i administratore.
