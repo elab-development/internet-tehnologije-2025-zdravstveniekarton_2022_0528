@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { AppointmentStatus } from '@prisma/client';
 
 /**
  * Zod seme za validaciju podataka koji stizu sa klijenta.
@@ -54,3 +55,21 @@ export const createAppointmentSchema = z.object({
 });
 
 export type CreateAppointmentInput = z.infer<typeof createAppointmentSchema>;
+
+/**
+ * Izmena termina. Oba polja su opciona, ali bar jedno mora biti poslato -
+ * inace bi zahtev bio prazan i ne bi imao sta da promeni.
+ */
+export const updateAppointmentSchema = z
+  .object({
+    status: z.nativeEnum(AppointmentStatus).optional(),
+    scheduledAt: z.coerce
+      .date({ errorMap: () => ({ message: 'Neispravan datum i vreme' }) })
+      .min(new Date(), 'Termin ne moze biti pomeren u proslost')
+      .optional(),
+  })
+  .refine((data) => data.status !== undefined || data.scheduledAt !== undefined, {
+    message: 'Navedite status ili novi datum termina',
+  });
+
+export type UpdateAppointmentInput = z.infer<typeof updateAppointmentSchema>;
