@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useSession, signOut } from 'next-auth/react';
 import { Role } from '@prisma/client';
+import Button from '@/components/ui/Button';
 
 /**
  * Navigacioni meni koji se prilagodjava ulozi prijavljenog korisnika.
@@ -94,13 +95,9 @@ export default function Navbar() {
               <span className="block font-medium text-slate-800">{session.user.name}</span>
               <span className="block text-xs text-slate-500">{ROLE_LABELS[session.user.role]}</span>
             </Link>
-            <button
-              type="button"
-              onClick={() => signOut({ callbackUrl: '/' })}
-              className="rounded-md border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
-            >
+            <Button variant="secondary" size="sm" onClick={() => signOut({ callbackUrl: '/' })}>
               Odjava
-            </button>
+            </Button>
           </div>
         ) : (
           <div className="flex items-center gap-2">

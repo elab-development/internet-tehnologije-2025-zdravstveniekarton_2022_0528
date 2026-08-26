@@ -4,8 +4,10 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { signIn } from 'next-auth/react';
 import Link from 'next/link';
+import Input from '@/components/ui/Input';
+import Button from '@/components/ui/Button';
 
-// Pocetno stanje forme drzimo u jednom objektu, da ne pravimo osam useState poziva.
+// Pocetno stanje forme drzimo u jednom objektu, da ne pravimo sedam useState poziva.
 const initialForm = {
   fullName: '',
   email: '',
@@ -78,7 +80,7 @@ export default function RegisterPage() {
         </p>
 
         <form onSubmit={handleSubmit} className="mt-6 grid gap-4 sm:grid-cols-2">
-          <FormField
+          <Input
             label="Ime i prezime"
             name="fullName"
             value={form.fullName}
@@ -86,16 +88,16 @@ export default function RegisterPage() {
             error={fieldErrors.fullName}
             required
           />
-          <FormField
+          <Input
             label="JMBG"
             name="jmbg"
             value={form.jmbg}
             onChange={handleChange}
             error={fieldErrors.jmbg}
-            placeholder="13 cifara"
+            hint="13 cifara"
             required
           />
-          <FormField
+          <Input
             label="Email adresa"
             name="email"
             type="email"
@@ -104,17 +106,17 @@ export default function RegisterPage() {
             error={fieldErrors.email}
             required
           />
-          <FormField
+          <Input
             label="Lozinka"
             name="password"
             type="password"
             value={form.password}
             onChange={handleChange}
             error={fieldErrors.password}
-            placeholder="najmanje 8 karaktera"
+            hint="najmanje 8 karaktera"
             required
           />
-          <FormField
+          <Input
             label="Datum rodjenja"
             name="dateOfBirth"
             type="date"
@@ -123,22 +125,21 @@ export default function RegisterPage() {
             error={fieldErrors.dateOfBirth}
             required
           />
-          <FormField
+          <Input
             label="Telefon"
             name="phone"
             value={form.phone}
             onChange={handleChange}
             error={fieldErrors.phone}
           />
-          <div className="sm:col-span-2">
-            <FormField
-              label="Adresa"
-              name="address"
-              value={form.address}
-              onChange={handleChange}
-              error={fieldErrors.address}
-            />
-          </div>
+          <Input
+            label="Adresa"
+            name="address"
+            value={form.address}
+            onChange={handleChange}
+            error={fieldErrors.address}
+            className="sm:col-span-2"
+          />
 
           {error && (
             <p
@@ -149,13 +150,9 @@ export default function RegisterPage() {
             </p>
           )}
 
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="rounded-md bg-sky-700 px-4 py-2 text-sm font-medium text-white hover:bg-sky-800 disabled:opacity-60 sm:col-span-2"
-          >
-            {isSubmitting ? 'Slanje...' : 'Registruj se'}
-          </button>
+          <Button type="submit" isLoading={isSubmitting} className="sm:col-span-2">
+            Registruj se
+          </Button>
         </form>
 
         <p className="mt-6 text-center text-sm text-slate-600">
@@ -166,46 +163,5 @@ export default function RegisterPage() {
         </p>
       </div>
     </main>
-  );
-}
-
-// Mala pomocna komponenta da se markup polja ne ponavlja sedam puta.
-// U komitu 15 bice zamenjena globalnom reusable komponentom Input.
-function FormField({
-  label,
-  name,
-  value,
-  onChange,
-  error,
-  type = 'text',
-  placeholder,
-  required,
-}: {
-  label: string;
-  name: string;
-  value: string;
-  onChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
-  error?: string;
-  type?: string;
-  placeholder?: string;
-  required?: boolean;
-}) {
-  return (
-    <div>
-      <label htmlFor={name} className="mb-1 block text-sm font-medium text-slate-700">
-        {label}
-      </label>
-      <input
-        id={name}
-        name={name}
-        type={type}
-        value={value}
-        onChange={onChange}
-        placeholder={placeholder}
-        required={required}
-        className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500"
-      />
-      {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
-    </div>
   );
 }

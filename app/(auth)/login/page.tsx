@@ -4,6 +4,8 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { signIn } from 'next-auth/react';
 import Link from 'next/link';
+import Input from '@/components/ui/Input';
+import Button from '@/components/ui/Button';
 
 /**
  * Stranica za prijavu (/login).
@@ -53,34 +55,24 @@ export default function LoginPage() {
         </p>
 
         <form onSubmit={handleSubmit} className="mt-6 space-y-4">
-          <div>
-            <label htmlFor="email" className="mb-1 block text-sm font-medium text-slate-700">
-              Email adresa
-            </label>
-            <input
-              id="email"
-              type="email"
-              required
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              placeholder="ime@primer.rs"
-              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500"
-            />
-          </div>
+          <Input
+            label="Email adresa"
+            name="email"
+            type="email"
+            required
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            placeholder="ime@primer.rs"
+          />
 
-          <div>
-            <label htmlFor="password" className="mb-1 block text-sm font-medium text-slate-700">
-              Lozinka
-            </label>
-            <input
-              id="password"
-              type="password"
-              required
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500"
-            />
-          </div>
+          <Input
+            label="Lozinka"
+            name="password"
+            type="password"
+            required
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+          />
 
           {error && (
             <p role="alert" className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
@@ -88,13 +80,9 @@ export default function LoginPage() {
             </p>
           )}
 
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="w-full rounded-md bg-sky-700 px-4 py-2 text-sm font-medium text-white hover:bg-sky-800 disabled:opacity-60"
-          >
-            {isSubmitting ? 'Prijavljivanje...' : 'Prijavi se'}
-          </button>
+          <Button type="submit" isLoading={isSubmitting} className="w-full">
+            Prijavi se
+          </Button>
         </form>
 
         <p className="mt-6 text-center text-sm text-slate-600">
