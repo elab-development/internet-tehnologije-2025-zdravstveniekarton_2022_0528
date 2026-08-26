@@ -37,3 +37,20 @@ export const loginSchema = z.object({
 });
 
 export type LoginInput = z.infer<typeof loginSchema>;
+
+/**
+ * Zakazivanje termina. Pacijent bira doktora, datum i razlog dolaska.
+ * Status se NE prima od klijenta - svaki novi termin krece kao REQUESTED.
+ */
+export const createAppointmentSchema = z.object({
+  doctorId: z.string().min(1, 'Izaberite doktora'),
+  scheduledAt: z.coerce
+    .date({ errorMap: () => ({ message: 'Neispravan datum i vreme' }) })
+    .min(new Date(), 'Termin ne moze biti u proslosti'),
+  reasonForVisit: z
+    .string()
+    .min(5, 'Razlog dolaska mora imati najmanje 5 karaktera')
+    .max(500, 'Razlog dolaska moze imati najvise 500 karaktera'),
+});
+
+export type CreateAppointmentInput = z.infer<typeof createAppointmentSchema>;
