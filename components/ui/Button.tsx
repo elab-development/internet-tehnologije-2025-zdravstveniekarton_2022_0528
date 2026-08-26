@@ -20,9 +20,9 @@ type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
 };
 
 const VARIANT_CLASSES: Record<Variant, string> = {
-  primary: 'bg-sky-700 text-white hover:bg-sky-800',
+  primary: 'bg-primary-700 text-white hover:bg-primary-800',
   secondary: 'border border-slate-300 bg-white text-slate-700 hover:bg-slate-50',
-  danger: 'bg-red-600 text-white hover:bg-red-700',
+  danger: 'bg-danger-600 text-white hover:bg-danger-700',
 };
 
 const SIZE_CLASSES: Record<Size, string> = {

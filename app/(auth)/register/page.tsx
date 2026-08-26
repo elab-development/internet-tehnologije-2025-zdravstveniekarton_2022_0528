@@ -74,7 +74,7 @@ export default function RegisterPage() {
   return (
     <main className="flex items-center justify-center px-4 py-12">
       <div className="w-full max-w-xl rounded-lg border border-slate-200 bg-white p-8 shadow-sm">
-        <h1 className="text-2xl font-bold text-sky-800">Registracija pacijenta</h1>
+        <h1 className="text-2xl font-bold text-primary-800">Registracija pacijenta</h1>
         <p className="mt-2 text-sm text-slate-600">
           Popunite podatke da biste otvorili svoj zdravstveni karton.
         </p>
@@ -144,7 +144,7 @@ export default function RegisterPage() {
           {error && (
             <p
               role="alert"
-              className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700 sm:col-span-2"
+              className="rounded-md bg-danger-50 px-3 py-2 text-sm text-danger-700 sm:col-span-2"
             >
               {error}
             </p>
@@ -157,7 +157,7 @@ export default function RegisterPage() {
 
         <p className="mt-6 text-center text-sm text-slate-600">
           Vec imate nalog?{' '}
-          <Link href="/login" className="font-medium text-sky-700 hover:underline">
+          <Link href="/login" className="font-medium text-primary-700 hover:underline">
             Prijavite se
           </Link>
         </p>

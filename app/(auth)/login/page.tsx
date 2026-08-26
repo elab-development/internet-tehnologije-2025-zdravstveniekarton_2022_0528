@@ -49,7 +49,7 @@ export default function LoginPage() {
   return (
     <main className="flex items-center justify-center px-4 py-12">
       <div className="w-full max-w-md rounded-lg border border-slate-200 bg-white p-8 shadow-sm">
-        <h1 className="text-2xl font-bold text-sky-800">Prijava</h1>
+        <h1 className="text-2xl font-bold text-primary-800">Prijava</h1>
         <p className="mt-2 text-sm text-slate-600">
           Unesite podatke za pristup svom zdravstvenom kartonu.
         </p>
@@ -75,7 +75,7 @@ export default function LoginPage() {
           />
 
           {error && (
-            <p role="alert" className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
+            <p role="alert" className="rounded-md bg-danger-50 px-3 py-2 text-sm text-danger-700">
               {error}
             </p>
           )}
@@ -87,7 +87,7 @@ export default function LoginPage() {
 
         <p className="mt-6 text-center text-sm text-slate-600">
           Nemate nalog?{' '}
-          <Link href="/register" className="font-medium text-sky-700 hover:underline">
+          <Link href="/register" className="font-medium text-primary-700 hover:underline">
             Registrujte se
           </Link>
         </p>

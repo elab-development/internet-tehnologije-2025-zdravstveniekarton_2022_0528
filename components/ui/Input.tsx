@@ -38,8 +38,8 @@ export default function Input({
         // Crveni okvir kada postoji greska, da se odmah vidi koje polje treba popraviti.
         className={`w-full rounded-md border px-3 py-2 text-sm outline-none focus:ring-1 ${
           error
-            ? 'border-red-400 focus:border-red-500 focus:ring-red-500'
-            : 'border-slate-300 focus:border-sky-500 focus:ring-sky-500'
+            ? 'border-danger-400 focus:border-danger-500 focus:ring-danger-500'
+            : 'border-slate-300 focus:border-primary-500 focus:ring-primary-500'
         }`}
         // aria-invalid javlja citacima ekrana da je vrednost neispravna.
         aria-invalid={error ? true : undefined}
@@ -47,7 +47,7 @@ export default function Input({
       />
 
       {error ? (
-        <p className="mt-1 text-xs text-red-600">{error}</p>
+        <p className="mt-1 text-xs text-danger-600">{error}</p>
       ) : (
         hint && <p className="mt-1 text-xs text-slate-500">{hint}</p>
       )}

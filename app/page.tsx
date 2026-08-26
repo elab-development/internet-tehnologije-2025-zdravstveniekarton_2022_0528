@@ -20,13 +20,13 @@ export default function HomePage({ searchParams }: { searchParams: { greska?: st
       {accessDenied && (
         <p
           role="alert"
-          className="mb-6 rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800"
+          className="mb-6 rounded-md border border-warning-100 bg-warning-50 px-4 py-3 text-sm text-warning-700"
         >
           Nemate ovlascenje za pristup toj stranici.
         </p>
       )}
 
-      <h1 className="text-4xl font-bold text-sky-800">Zdravstveni e-Karton</h1>
+      <h1 className="text-4xl font-bold text-primary-800">Zdravstveni e-Karton</h1>
       <p className="mt-4 text-lg text-slate-600">
         Elektronski zdravstveni karton za pacijente, doktore, medicinske sestre i administratore.
       </p>
@@ -34,13 +34,13 @@ export default function HomePage({ searchParams }: { searchParams: { greska?: st
       <div className="mt-8 flex flex-wrap gap-3">
         <Link
           href="/login"
-          className="rounded-md bg-sky-700 px-5 py-2.5 text-sm font-medium text-white hover:bg-sky-800"
+          className="rounded-md bg-primary-700 px-5 py-2.5 text-sm font-medium text-white hover:bg-primary-800"
         >
           Prijava
         </Link>
         <Link
           href="/register"
-          className="rounded-md border border-sky-700 px-5 py-2.5 text-sm font-medium text-sky-700 hover:bg-sky-50"
+          className="rounded-md border border-primary-700 px-5 py-2.5 text-sm font-medium text-primary-700 hover:bg-primary-50"
         >
           Registracija pacijenta
         </Link>
