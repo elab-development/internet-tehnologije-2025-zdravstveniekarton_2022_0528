@@ -6,7 +6,7 @@ export default function HomePage({ searchParams }: { searchParams: { greska?: st
   const accessDenied = searchParams.greska === 'nemate-pristup';
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-3xl flex-col justify-center px-6">
+    <main className="mx-auto max-w-3xl px-6 py-16">
       {accessDenied && (
         <p
           role="alert"
