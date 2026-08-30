@@ -18,6 +18,9 @@ export const ROUTE_PERMISSIONS: { prefix: string; roles: Role[] }[] = [
   // Pacijent ovde NEMA pristup; on svoj karton vidi na sopstvenoj stranici.
   { prefix: '/patients', roles: [Role.DOCTOR, Role.NURSE, Role.ADMIN] },
 
+  // Zakazivanje termina - samo pacijent salje zahtev za termin.
+  { prefix: '/appointments/create', roles: [Role.PATIENT] },
+
   // Unos i izmena pregleda - samo doktor postavlja dijagnozu i terapiju.
   { prefix: '/medical-records/create', roles: [Role.DOCTOR] },
 

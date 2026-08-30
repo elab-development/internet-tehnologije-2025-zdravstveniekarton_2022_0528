@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { AppointmentStatus } from '@prisma/client';
 
 /**
  * Zod seme za validaciju podataka koji stizu sa klijenta.
@@ -37,3 +38,38 @@ export const loginSchema = z.object({
 });
 
 export type LoginInput = z.infer<typeof loginSchema>;
+
+/**
+ * Zakazivanje termina. Pacijent bira doktora, datum i razlog dolaska.
+ * Status se NE prima od klijenta - svaki novi termin krece kao REQUESTED.
+ */
+export const createAppointmentSchema = z.object({
+  doctorId: z.string().min(1, 'Izaberite doktora'),
+  scheduledAt: z.coerce
+    .date({ errorMap: () => ({ message: 'Neispravan datum i vreme' }) })
+    .min(new Date(), 'Termin ne moze biti u proslosti'),
+  reasonForVisit: z
+    .string()
+    .min(5, 'Razlog dolaska mora imati najmanje 5 karaktera')
+    .max(500, 'Razlog dolaska moze imati najvise 500 karaktera'),
+});
+
+export type CreateAppointmentInput = z.infer<typeof createAppointmentSchema>;
+
+/**
+ * Izmena termina. Oba polja su opciona, ali bar jedno mora biti poslato -
+ * inace bi zahtev bio prazan i ne bi imao sta da promeni.
+ */
+export const updateAppointmentSchema = z
+  .object({
+    status: z.nativeEnum(AppointmentStatus).optional(),
+    scheduledAt: z.coerce
+      .date({ errorMap: () => ({ message: 'Neispravan datum i vreme' }) })
+      .min(new Date(), 'Termin ne moze biti pomeren u proslost')
+      .optional(),
+  })
+  .refine((data) => data.status !== undefined || data.scheduledAt !== undefined, {
+    message: 'Navedite status ili novi datum termina',
+  });
+
+export type UpdateAppointmentInput = z.infer<typeof updateAppointmentSchema>;
