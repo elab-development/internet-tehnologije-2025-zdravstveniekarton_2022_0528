@@ -3,6 +3,10 @@
 
 generator client {
   provider = "prisma-client-js"
+  // "native" je engine za masinu na kojoj se razvija (Windows/macOS), a
+  // "linux-musl-openssl-3.0.x" je engine za Alpine Linux u Docker kontejneru.
+  // Bez ovog drugog, Prisma u kontejneru ne moze da ucita svoj engine.
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
 }
 
 datasource db {
@@ -71,7 +75,8 @@ model User {
 model PatientProfile {
   id                    String   @id @default(cuid())
   userId                String   @unique
-  jmbg                  String
+  // Jedan JMBG moze pripadati samo jednom pacijentu - sprecava dvostruki karton.
+  jmbg                  String   @unique
   dateOfBirth           DateTime
   bloodType             String?
   address               String?
@@ -93,7 +98,8 @@ model DoctorProfile {
   id             String   @id @default(cuid())
   userId         String   @unique
   specialization String
-  licenseNumber  String
+  // Broj licence je jedinstven na nivou drzave, pa i u nasoj bazi.
+  licenseNumber  String   @unique
   officeRoom     String?
   createdAt      DateTime @default(now())
 
@@ -114,6 +120,11 @@ model Appointment {
   patient       User           @relation("PatientAppointments", fields: [patientId], references: [id])
   doctor        User           @relation("DoctorAppointments", fields: [doctorId], references: [id])
   medicalRecord MedicalRecord?
+
+  // Termini se skoro uvek traze po datumu i po statusu, pa indeks nad tim
+  // kolonama znatno ubrzava listu termina kada podataka bude vise.
+  @@index([scheduledAt])
+  @@index([status])
 }
 
 // Jedan pregled u kartonu pacijenta - srce cele aplikacije.
@@ -137,6 +148,9 @@ model MedicalRecord {
   patientProfile PatientProfile @relation(fields: [patientProfileId], references: [id])
   doctor         User           @relation("DoctorRecords", fields: [doctorId], references: [id])
   prescriptions  Prescription[]
+
+  // Karton pacijenta se uvek ucitava po pacijentu i redja po datumu pregleda.
+  @@index([patientProfileId, visitDate])
 }
 
 // Lek propisan u okviru jednog pregleda. Jedan pregled moze imati vise lekova.

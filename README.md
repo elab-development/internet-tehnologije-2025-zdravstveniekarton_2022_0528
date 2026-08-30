@@ -13,6 +13,7 @@ Seminarski rad iz predmeta **Internet tehnologije** — Fakultet organizacionih 
 - [Tehnologije](#tehnologije)
 - [Eksterni API-ji](#eksterni-api-ji)
 - [Pokretanje aplikacije](#pokretanje-aplikacije)
+- [Pokretanje kroz Docker](#pokretanje-kroz-docker)
 - [Struktura projekta](#struktura-projekta)
 - [Git grane](#git-grane)
 - [Plan razvoja](#plan-razvoja)
@@ -130,6 +131,20 @@ npm run dev
 
 Aplikacija je dostupna na [http://localhost:3000](http://localhost:3000).
 
+### Demo nalozi
+
+Nakon `npm run db:seed` dostupni su nalozi za isprobavanje. Lozinka za sve je
+`lozinka123`.
+
+| Email                  | Uloga                   |
+| ---------------------- | ----------------------- |
+| `admin@ekarton.rs`     | administrator           |
+| `jovanovic@ekarton.rs` | doktor (opsta medicina) |
+| `petrovic@ekarton.rs`  | doktor (kardiologija)   |
+| `sestra@ekarton.rs`    | medicinska sestra       |
+| `marko@primer.rs`      | pacijent                |
+| `ana@primer.rs`        | pacijent                |
+
 ### Korisne komande
 
 | Komanda              | Opis                           |
@@ -140,6 +155,19 @@ Aplikacija je dostupna na [http://localhost:3000](http://localhost:3000).
 | `npm run lint`       | provera koda ESLint-om         |
 | `npm run type-check` | provera TypeScript tipova      |
 | `npm run format`     | formatiranje koda Prettier-om  |
+
+---
+
+## API dokumentacija
+
+Specifikacija je napisana po **OpenAPI 3.0.3** standardu i nalazi se u
+`public/swagger.json`. Interaktivni prikaz dostupan je na
+[http://localhost:3000/api-docs](http://localhost:3000/api-docs).
+
+Dokumentovano je 20 ruta sa 28 operacija, grupisanih u 11 celina (Auth, Users,
+Patients, Appointments, MedicalRecords, Prescriptions, LabResults, Allergies,
+Stats, External...). Za svaku rutu opisani su ulazni podaci, oblik odgovora i
+svi HTTP statusi koje ruta moze da vrati (200, 201, 400, 401, 403, 404, 409, 429).
 
 ---
 
@@ -154,6 +182,23 @@ Aplikacija je dostupna na [http://localhost:3000](http://localhost:3000).
 ├── docs/           projektna dokumentacija
 └── public/         statički fajlovi i Swagger specifikacija
 ```
+
+---
+
+## CI/CD
+
+Pri svakom guranju koda i pull request-u ka granama `main` i `develop`
+pokrece se GitHub Actions pipeline (`.github/workflows/ci.yml`) sa cetiri posla:
+
+| Posao    | Sta radi                                                 |
+| -------- | -------------------------------------------------------- |
+| `lint`   | ESLint, provera TypeScript tipova i provera formatiranja |
+| `test`   | pokretanje testova sa izvestajem o pokrivenosti koda     |
+| `build`  | produkcioni `next build`                                 |
+| `docker` | provera da se Docker slika uspesno gradi                 |
+
+Poslovi `build` i `docker` pokrecu se tek kada `lint` i `test` prodju, pa se
+ne trosi vreme na gradjenje koda koji ionako ne valja.
 
 ---
 

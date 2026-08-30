@@ -1,6 +1,10 @@
-# Lokalno okruzenje za razvoj.
-# Za sada sadrzi samo bazu podataka; servis sa aplikacijom se dodaje u Fazi 12.
-# Pokretanje:  docker compose up -d
+# Kompletno okruzenje aplikacije: baza podataka i sama aplikacija.
+#
+# Pokretanje:             docker compose up --build
+# Punjenje demo podacima: npm run db:seed   (sa host masine, preko porta 5433)
+# Gasenje:                docker compose down
+#
+# Aplikacija je posle pokretanja dostupna na http://localhost:3000
 
 services:
   db:
@@ -23,6 +27,32 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ekarton-app
+    restart: unless-stopped
+    depends_on:
+      db:
+        # Aplikacija ceka da baza bude STVARNO spremna, a ne samo pokrenuta.
+        # Bez ovoga bi migracije pukle jer Postgres jos ne prima konekcije.
+        condition: service_healthy
+    environment:
+      # Unutar Docker mreze servisi se nalaze po imenu, pa je host "db",
+      # a port 5432 (interni port kontejnera, ne 5433 sa host masine).
+      DATABASE_URL: postgresql://${POSTGRES_USER:-ekarton}:${POSTGRES_PASSWORD:-ekarton}@db:5432/${POSTGRES_DB:-ekarton}?schema=public
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:?Postavite NEXTAUTH_SECRET u .env fajlu}
+      NEXTAUTH_URL: ${NEXTAUTH_URL:-http://localhost:3000}
+      NODE_ENV: production
+    ports:
+      - '3000:3000'
+    # Migracije se primenjuju pri svakom pokretanju, pa je baza uvek uskladjena
+    # sa semom. "migrate deploy" samo primenjuje postojece migracije i nikada
+    # ne brise podatke - zato je bezbedan za produkciju.
+    command: >
+      sh -c "node node_modules/prisma/build/index.js migrate deploy && node server.js"
 
 volumes:
   ekarton-db-data:
