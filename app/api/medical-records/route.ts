@@ -12,6 +12,7 @@ const recordSelect = {
   id: true,
   visitDate: true,
   symptoms: true,
+  diagnosisCode: true,
   diagnosisName: true,
   therapyNotes: true,
   createdAt: true,
@@ -92,8 +93,15 @@ export async function POST(request: NextRequest) {
   const parsed = createMedicalRecordSchema.safeParse(body);
   if (!parsed.success) return jsonValidationError(parsed.error);
 
-  const { patientProfileId, appointmentId, visitDate, symptoms, diagnosisName, therapyNotes } =
-    parsed.data;
+  const {
+    patientProfileId,
+    appointmentId,
+    visitDate,
+    symptoms,
+    diagnosisCode,
+    diagnosisName,
+    therapyNotes,
+  } = parsed.data;
 
   const patientProfile = await prisma.patientProfile.findUnique({
     where: { id: patientProfileId },
@@ -126,6 +134,7 @@ export async function POST(request: NextRequest) {
       doctorId: auth.user.id,
       visitDate: visitDate ?? new Date(),
       symptoms,
+      diagnosisCode,
       diagnosisName,
       therapyNotes,
     },

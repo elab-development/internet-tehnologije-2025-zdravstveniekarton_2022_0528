@@ -79,7 +79,7 @@ export type UpdateAppointmentInput = z.infer<typeof updateAppointmentSchema>;
  *
  * doctorId se NE prima od klijenta - uzima se iz sesije prijavljenog lekara,
  * da niko ne bi mogao da upise pregled u tudje ime.
- * Polje diagnosisCode (ICD-10 sifra) dodaje se u kasnijoj fazi.
+ * Polje diagnosisCode je ICD-10 sifra izabrana preko eksternog NIH servisa.
  */
 export const createMedicalRecordSchema = z.object({
   patientProfileId: z.string().min(1, 'Izaberite pacijenta'),
@@ -92,6 +92,8 @@ export const createMedicalRecordSchema = z.object({
     .string()
     .min(5, 'Opis simptoma mora imati najmanje 5 karaktera')
     .max(2000, 'Opis simptoma je predugacak'),
+  // Sifra je opciona: lekar sme da upise dijagnozu i bez nje.
+  diagnosisCode: z.string().max(20, 'Sifra dijagnoze je predugacka').optional(),
   diagnosisName: z
     .string()
     .min(3, 'Naziv dijagnoze mora imati najmanje 3 karaktera')

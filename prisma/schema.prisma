@@ -120,6 +120,9 @@ model MedicalRecord {
   doctorId         String
   visitDate        DateTime @default(now())
   symptoms         String
+  // ICD-10 sifra izabrana preko eksternog NIH servisa. Opciona je, jer lekar
+  // sme da upise dijagnozu i bez sifre (npr. ako servis nije dostupan).
+  diagnosisCode    String?
   diagnosisName    String
   therapyNotes     String?
   createdAt        DateTime @default(now())
