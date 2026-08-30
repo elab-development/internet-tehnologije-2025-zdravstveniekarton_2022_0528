@@ -1,12 +1,13 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import { Role, LabResultStatus } from '@prisma/client';
 import Card from '@/components/ui/Card';
 import MedicalRecordCard, { type MedicalRecord } from '@/components/medical/MedicalRecordCard';
-import AllergyBadge, { type Allergy } from '@/components/medical/AllergyBadge';
+import { type Allergy } from '@/components/medical/AllergyBadge';
+import AllergyManager from '@/components/medical/AllergyManager';
 import { formatDate } from '@/lib/format';
 
 type LabResult = {
@@ -50,20 +51,23 @@ export default function PatientChartPage({ params }: { params: { id: string } })
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
 
-  useEffect(() => {
-    async function loadChart() {
-      const response = await fetch(`/api/patients/${params.id}`);
-      if (!response.ok) {
-        const payload = await response.json();
-        setError(payload.error ?? 'Karton nije moguce ucitati.');
-        setIsLoading(false);
-        return;
-      }
-      setPatient((await response.json()).data);
+  // useCallback cuva istu funkciju izmedju rendera, pa je useEffect ne pokrece
+  // iznova. Isti poziv koristi AllergyManager da osvezi karton posle izmene.
+  const loadChart = useCallback(async () => {
+    const response = await fetch(`/api/patients/${params.id}`);
+    if (!response.ok) {
+      const payload = await response.json();
+      setError(payload.error ?? 'Karton nije moguce ucitati.');
       setIsLoading(false);
+      return;
     }
-    loadChart();
+    setPatient((await response.json()).data);
+    setIsLoading(false);
   }, [params.id]);
+
+  useEffect(() => {
+    loadChart();
+  }, [loadChart]);
 
   if (isLoading) {
     return (
@@ -103,16 +107,12 @@ export default function PatientChartPage({ params }: { params: { id: string } })
       </div>
 
       {/* Alergije idu na vrh: lekar ih mora videti pre nego sto propise terapiju. */}
-      {patient.allergies.length > 0 && (
-        <div className="mb-6 rounded-lg border border-warning-100 bg-warning-50 px-4 py-3">
-          <p className="mb-2 text-sm font-semibold text-warning-700">Poznate alergije</p>
-          <div className="flex flex-wrap gap-2">
-            {patient.allergies.map((allergy) => (
-              <AllergyBadge key={allergy.id} allergy={allergy} />
-            ))}
-          </div>
-        </div>
-      )}
+      <AllergyManager
+        patientProfileId={patient.id}
+        allergies={patient.allergies}
+        canManage={role === Role.DOCTOR || role === Role.NURSE}
+        onChanged={loadChart}
+      />
 
       <Card title="Licni podaci" className="mb-6">
         <dl className="grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2">

@@ -127,3 +127,14 @@ export function canFillLabResult(user: SessionUser, requestedByDoctorId: string)
   if (user.role === Role.DOCTOR) return requestedByDoctorId === user.id;
   return false;
 }
+
+/**
+ * Ko sme da UNESE ili UKLONI alergiju pacijenta.
+ *
+ * Alergija nije dijagnoza nego podatak koji se prikuplja pri prijemu, pa je
+ * pored lekara sme unositi i sestra. Pacijent ne sme sam da menja ovaj podatak,
+ * jer se na osnovu njega propisuje terapija.
+ */
+export function canManageAllergies(user: SessionUser): boolean {
+  return user.role === Role.DOCTOR || user.role === Role.NURSE;
+}

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { AppointmentStatus } from '@prisma/client';
+import { AppointmentStatus, AllergySeverity } from '@prisma/client';
 
 /**
  * Zod seme za validaciju podataka koji stizu sa klijenta.
@@ -178,3 +178,21 @@ export const updateLabResultSchema = z.object({
 });
 
 export type UpdateLabResultInput = z.infer<typeof updateLabResultSchema>;
+
+/**
+ * Unos alergije pacijenta. Unose je lekar i sestra, jer je to podatak koji se
+ * prikuplja pri prijemu pacijenta, a ne dijagnoza.
+ */
+export const createAllergySchema = z.object({
+  patientProfileId: z.string().min(1, 'Izaberite pacijenta'),
+  allergen: z
+    .string()
+    .min(2, 'Naziv alergena mora imati najmanje 2 karaktera')
+    .max(200, 'Naziv alergena je predugacak'),
+  severity: z.nativeEnum(AllergySeverity, {
+    errorMap: () => ({ message: 'Izaberite tezinu reakcije' }),
+  }),
+  notes: z.string().max(500, 'Napomena je predugacka').optional(),
+});
+
+export type CreateAllergyInput = z.infer<typeof createAllergySchema>;
