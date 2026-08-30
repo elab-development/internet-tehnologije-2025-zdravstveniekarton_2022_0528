@@ -13,6 +13,7 @@ Seminarski rad iz predmeta **Internet tehnologije** — Fakultet organizacionih 
 - [Tehnologije](#tehnologije)
 - [Eksterni API-ji](#eksterni-api-ji)
 - [Pokretanje aplikacije](#pokretanje-aplikacije)
+- [Pokretanje kroz Docker](#pokretanje-kroz-docker)
 - [Struktura projekta](#struktura-projekta)
 - [Git grane](#git-grane)
 - [Plan razvoja](#plan-razvoja)
@@ -129,6 +130,20 @@ npm run dev
 ```
 
 Aplikacija je dostupna na [http://localhost:3000](http://localhost:3000).
+
+### Demo nalozi
+
+Nakon `npm run db:seed` dostupni su nalozi za isprobavanje. Lozinka za sve je
+`lozinka123`.
+
+| Email                  | Uloga                   |
+| ---------------------- | ----------------------- |
+| `admin@ekarton.rs`     | administrator           |
+| `jovanovic@ekarton.rs` | doktor (opsta medicina) |
+| `petrovic@ekarton.rs`  | doktor (kardiologija)   |
+| `sestra@ekarton.rs`    | medicinska sestra       |
+| `marko@primer.rs`      | pacijent                |
+| `ana@primer.rs`        | pacijent                |
 
 ### Korisne komande
 

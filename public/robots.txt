@@ -1,0 +1,6 @@
+# Aplikacija sa zdravstvenim podacima ne treba da bude indeksirana
+# od strane pretrazivaca. Sve stranice sa podacima su ionako zasticene
+# prijavom, ali ovo je dodatna mera da linkovi ne zavrsavaju u rezultatima
+# pretrage.
+User-agent: *
+Disallow: /
