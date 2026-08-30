@@ -37,6 +37,12 @@ export const authOptions: NextAuthOptions = {
           return null;
         }
 
+        // Deaktiviran nalog se ne moze prijaviti, cak i sa ispravnom lozinkom.
+        // Provera ide PRE poredjenja lozinke, da se ne trosi vreme na bcrypt.
+        if (!user.isActive) {
+          return null;
+        }
+
         const passwordMatches = await bcrypt.compare(credentials.password, user.passwordHash);
         if (!passwordMatches) {
           return null;

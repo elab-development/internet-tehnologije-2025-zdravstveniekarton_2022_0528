@@ -46,6 +46,10 @@ model User {
   fullName     String
   role         Role     @default(PATIENT)
   phone        String?
+  // Deaktiviran nalog ostaje u bazi, ali se vlasnik ne moze prijaviti.
+  // Nalog se NE brise, jer bi se time izgubila veza sa pregledima i nalazima
+  // koje je taj korisnik uneo - medicinska dokumentacija mora ostati citljiva.
+  isActive     Boolean  @default(true)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
