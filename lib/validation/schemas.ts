@@ -151,3 +151,30 @@ export const updateMedicalRecordSchema = z
   });
 
 export type UpdateMedicalRecordInput = z.infer<typeof updateMedicalRecordSchema>;
+
+/**
+ * Narucivanje laboratorijskog nalaza (radi lekar).
+ * Rezultat se ovde NE unosi - nalaz nastaje sa statusom PENDING.
+ */
+export const createLabResultSchema = z.object({
+  patientProfileId: z.string().min(1, 'Izaberite pacijenta'),
+  testType: z
+    .string()
+    .min(3, 'Naziv analize mora imati najmanje 3 karaktera')
+    .max(200, 'Naziv analize je predugacak'),
+  testDate: z.coerce.date({ errorMap: () => ({ message: 'Neispravan datum analize' }) }).optional(),
+});
+
+export type CreateLabResultInput = z.infer<typeof createLabResultSchema>;
+
+/**
+ * Unos rezultata nalaza (radi sestra).
+ * Status se ne prima od klijenta - postavlja se u kodu na COMPLETED.
+ */
+export const updateLabResultSchema = z.object({
+  resultValue: z.string().min(1, 'Unesite izmerenu vrednost').max(100, 'Vrednost je predugacka'),
+  resultUnit: z.string().max(50, 'Jedinica je predugacka').optional(),
+  referenceRange: z.string().max(100, 'Referentni opseg je predugacak').optional(),
+});
+
+export type UpdateLabResultInput = z.infer<typeof updateLabResultSchema>;

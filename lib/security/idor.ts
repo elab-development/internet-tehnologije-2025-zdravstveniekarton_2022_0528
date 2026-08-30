@@ -114,3 +114,16 @@ export async function canReadPatientRecords(
 export function canUpdateMedicalRecord(user: SessionUser, recordDoctorId: string): boolean {
   return user.role === Role.DOCTOR && recordDoctorId === user.id;
 }
+
+/**
+ * Ko sme da UNESE rezultat nalaza.
+ *
+ * Sestra je ta koja unosi rezultate iz laboratorije; lekar to sme takodje,
+ * ali samo za nalaz koji je sam narucio. Administrator NE unosi rezultate -
+ * to nije administrativna, nego strucna radnja.
+ */
+export function canFillLabResult(user: SessionUser, requestedByDoctorId: string): boolean {
+  if (user.role === Role.NURSE) return true;
+  if (user.role === Role.DOCTOR) return requestedByDoctorId === user.id;
+  return false;
+}
