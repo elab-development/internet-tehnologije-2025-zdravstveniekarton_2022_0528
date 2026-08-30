@@ -102,3 +102,27 @@ export const createMedicalRecordSchema = z.object({
 });
 
 export type CreateMedicalRecordInput = z.infer<typeof createMedicalRecordSchema>;
+
+/**
+ * Propisivanje leka uz vec unet pregled.
+ *
+ * Validacija je ovde posebno vazna jer je rec o terapiji: trajanje mora biti
+ * ceo pozitivan broj, a doza i ucestalost ne smeju ostati prazne.
+ */
+export const createPrescriptionSchema = z.object({
+  medicalRecordId: z.string().min(1, 'Nedostaje pregled uz koji se propisuje lek'),
+  medicationName: z
+    .string()
+    .min(2, 'Naziv leka mora imati najmanje 2 karaktera')
+    .max(200, 'Naziv leka je predugacak'),
+  dosage: z.string().min(1, 'Unesite dozu').max(100, 'Doza je predugacka'),
+  frequency: z.string().min(1, 'Unesite ucestalost').max(100, 'Ucestalost je predugacka'),
+  durationDays: z
+    .number({ invalid_type_error: 'Trajanje mora biti broj' })
+    .int('Trajanje mora biti ceo broj dana')
+    .positive('Trajanje mora biti vece od nule')
+    .max(365, 'Trajanje ne moze biti duze od godinu dana'),
+  notes: z.string().max(500, 'Napomena je predugacka').optional(),
+});
+
+export type CreatePrescriptionInput = z.infer<typeof createPrescriptionSchema>;
