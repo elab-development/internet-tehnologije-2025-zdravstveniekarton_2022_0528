@@ -185,6 +185,23 @@ svi HTTP statusi koje ruta moze da vrati (200, 201, 400, 401, 403, 404, 409, 429
 
 ---
 
+## CI/CD
+
+Pri svakom guranju koda i pull request-u ka granama `main` i `develop`
+pokrece se GitHub Actions pipeline (`.github/workflows/ci.yml`) sa cetiri posla:
+
+| Posao    | Sta radi                                                 |
+| -------- | -------------------------------------------------------- |
+| `lint`   | ESLint, provera TypeScript tipova i provera formatiranja |
+| `test`   | pokretanje testova sa izvestajem o pokrivenosti koda     |
+| `build`  | produkcioni `next build`                                 |
+| `docker` | provera da se Docker slika uspesno gradi                 |
+
+Poslovi `build` i `docker` pokrecu se tek kada `lint` i `test` prodju, pa se
+ne trosi vreme na gradjenje koda koji ionako ne valja.
+
+---
+
 ## Git grane
 
 | Grana       | Namena                       |
