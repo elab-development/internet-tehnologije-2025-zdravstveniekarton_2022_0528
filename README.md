@@ -207,6 +207,18 @@ Dostupni nakon `npm run db:seed`. Lozinka za sve naloge je **`lozinka123`**.
 | `npm run db:up` / `npm run db:down` | pokretanje i gašenje baze u Dockeru             |
 | `npm run db:seed`                   | punjenje baze demo podacima                     |
 
+> **Napomena za instalaciju novih paketa (Windows):** `npm install` na Windows-u u
+> `package-lock.json` upisuje samo Windows varijante opcionih paketa, pa `npm ci` na Linux-u
+> (GitHub Actions, Docker) puca uz poruku `Missing: ... from lock file`. Posle svakog dodavanja
+> paketa pokrenuti:
+>
+> ```bash
+> npm run lock:fix
+> ```
+>
+> Ta komanda regeneriše lock fajl unutar Linux kontejnera, pa on sadrži varijante za sve
+> platforme i radi svuda.
+
 ---
 
 ## Struktura projekta

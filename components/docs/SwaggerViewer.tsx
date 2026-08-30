@@ -1,22 +1,65 @@
 'use client';
 
-import dynamic from 'next/dynamic';
-import 'swagger-ui-react/swagger-ui.css';
+import { useEffect, useRef, useState } from 'react';
+import 'swagger-ui-dist/swagger-ui.css';
 
 /**
- * Swagger UI se ucitava dinamicki, sa iskljucenim renderovanjem na serveru
- * (ssr: false). Razlog: biblioteka pristupa objektima window i document, koji
- * na serveru ne postoje, pa bi bez ovoga stranica pucala pri build-u.
+ * Prikaz OpenAPI specifikacije pomocu Swagger UI-ja.
  *
- * Sporedna korist: kod Swagger UI-ja je velik i ucitava se tek kada korisnik
- * zaista otvori /api-docs, umesto da opterecuje ostale stranice.
+ * Koristi se paket `swagger-ui-dist` (gotov JS bundle), a ne `swagger-ui-react`.
+ * Razlog: `swagger-ui-react` povlaci apidom biblioteke sa native modulima
+ * (tree-sitter), koji se razlikuju po operativnom sistemu. Zbog toga bi
+ * package-lock.json bio razlicit na Windows-u i na Linux-u, pa bi `npm ci`
+ * u GitHub Actions pipeline-u pucao. Ovaj paket je obican JavaScript i taj
+ * problem ne postoji.
+ *
+ * Koriscene kuke:
+ *  - useRef    -> pokazivac na DOM element u koji Swagger UI iscrtava sadrzaj
+ *  - useEffect -> ucitavanje biblioteke tek u browseru, posle prvog prikaza
+ *  - useState  -> poruka o gresci ako ucitavanje ne uspe
  */
-const SwaggerUI = dynamic(() => import('swagger-ui-react'), {
-  ssr: false,
-  loading: () => <p className="text-sm text-slate-500">Ucitavanje dokumentacije...</p>,
-});
-
 export default function SwaggerViewer() {
-  // Specifikacija stoji u public/ folderu, pa se ucitava sa adrese /swagger.json.
-  return <SwaggerUI url="/swagger.json" />;
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    // Zastava sprecava iscrtavanje ako korisnik napusti stranicu
+    // pre nego sto se biblioteka ucita.
+    let cancelled = false;
+
+    // Dinamicki uvoz: biblioteka je velika i ucitava se tek kada korisnik
+    // otvori ovu stranicu. Uz to, pristupa objektu window, koji na serveru
+    // ne postoji - zato uvoz mora biti unutar useEffect-a.
+    import('swagger-ui-dist/swagger-ui-es-bundle.js')
+      .then((module) => {
+        if (cancelled || !containerRef.current) return;
+
+        const SwaggerUIBundle = module.default;
+        SwaggerUIBundle({
+          url: '/swagger.json',
+          domNode: containerRef.current,
+          // Sakriva polje za unos druge adrese specifikacije - prikazuje se
+          // iskljucivo dokumentacija ove aplikacije.
+          docExpansion: 'list',
+          defaultModelsExpandDepth: -1,
+        });
+      })
+      .catch(() => {
+        if (!cancelled) setError('Dokumentaciju nije moguce ucitati.');
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  if (error) {
+    return (
+      <p role="alert" className="px-4 py-3 text-sm text-danger-700">
+        {error}
+      </p>
+    );
+  }
+
+  return <div ref={containerRef} />;
 }
