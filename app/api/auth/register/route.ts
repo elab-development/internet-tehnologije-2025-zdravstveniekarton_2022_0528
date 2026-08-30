@@ -4,6 +4,7 @@ import { Role } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { registerSchema } from '@/lib/validation/schemas';
 import { jsonOk, jsonError, jsonValidationError } from '@/lib/api';
+import { checkRegisterAttempt, getClientKey } from '@/lib/security/rateLimiter';
 
 /**
  * POST /api/auth/register - samostalna registracija pacijenta.
@@ -14,6 +15,13 @@ import { jsonOk, jsonError, jsonValidationError } from '@/lib/api';
  * Naloge doktora i sestara kreira administrator (Faza 8).
  */
 export async function POST(request: NextRequest) {
+  // Ogranicenje broja registracija sa iste adrese - sprecava automatsko
+  // pravljenje stotina laznih naloga.
+  const allowed = await checkRegisterAttempt(getClientKey(request.headers));
+  if (!allowed) {
+    return jsonError('Previse pokusaja registracije. Pokusajte kasnije.', 429);
+  }
+
   let body: unknown;
   try {
     body = await request.json();
