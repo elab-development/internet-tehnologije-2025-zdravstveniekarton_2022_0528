@@ -1,0 +1,28 @@
+# Lokalno okruzenje za razvoj.
+# Za sada sadrzi samo bazu podataka; servis sa aplikacijom se dodaje u Fazi 12.
+# Pokretanje:  docker compose up -d
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: ekarton-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-ekarton}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ekarton}
+      POSTGRES_DB: ${POSTGRES_DB:-ekarton}
+    ports:
+      # Baza je izlozena na host masini da bi Prisma CLI mogao da se povezuje sa nje.
+      # Koristi se 5433 jer je 5432 cesto vec zauzet lokalno instaliranim PostgreSQL-om.
+      - '5433:5432'
+    volumes:
+      # Imenovani volumen cuva podatke i posle gasenja kontejnera.
+      - ekarton-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-ekarton} -d ${POSTGRES_DB:-ekarton}']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  ekarton-db-data:
