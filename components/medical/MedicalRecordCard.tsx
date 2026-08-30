@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import Card from '@/components/ui/Card';
 import { formatDate } from '@/lib/format';
 
@@ -32,7 +33,14 @@ export type MedicalRecord = {
  * ijednog poziva ka serveru. Zato se moze koristiti i u kartonu pacijenta i
  * kasnije na stranici pojedinacnog pregleda.
  */
-export default function MedicalRecordCard({ record }: { record: MedicalRecord }) {
+export default function MedicalRecordCard({
+  record,
+  showDetailsLink = false,
+}: {
+  record: MedicalRecord;
+  /** Prikazuje vezu ka stranici pregleda; iskljucuje se na samoj toj stranici. */
+  showDetailsLink?: boolean;
+}) {
   return (
     <Card
       title={record.diagnosisName}
@@ -83,6 +91,15 @@ export default function MedicalRecordCard({ record }: { record: MedicalRecord })
           </div>
         )}
       </dl>
+
+      {showDetailsLink && (
+        <Link
+          href={`/medical-records/${record.id}`}
+          className="mt-3 inline-block text-sm text-primary-700 hover:underline"
+        >
+          Detalji pregleda i terapija
+        </Link>
+      )}
     </Card>
   );
 }

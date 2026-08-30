@@ -180,7 +180,7 @@ export default function PatientChartPage({ params }: { params: { id: string } })
       ) : (
         <div className="space-y-4">
           {patient.medicalRecords.map((record) => (
-            <MedicalRecordCard key={record.id} record={record} />
+            <MedicalRecordCard key={record.id} record={record} showDetailsLink />
           ))}
         </div>
       )}

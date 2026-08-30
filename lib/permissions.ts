@@ -24,8 +24,9 @@ export const ROUTE_PERMISSIONS: { prefix: string; roles: Role[] }[] = [
   // Unos i izmena pregleda - samo doktor postavlja dijagnozu i terapiju.
   { prefix: '/medical-records/create', roles: [Role.DOCTOR] },
 
-  // Unos laboratorijskih nalaza - sestra unosi rezultat, doktor ga narucuje.
-  { prefix: '/lab-results/create', roles: [Role.NURSE, Role.DOCTOR] },
+  // Narucivanje analize - iskljucivo lekar. Sestra rezultat unosi kroz
+  // modalni prozor na listi nalaza, pa joj ova stranica nije potrebna.
+  { prefix: '/lab-results/create', roles: [Role.DOCTOR] },
 ];
 
 /**

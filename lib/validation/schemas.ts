@@ -102,3 +102,79 @@ export const createMedicalRecordSchema = z.object({
 });
 
 export type CreateMedicalRecordInput = z.infer<typeof createMedicalRecordSchema>;
+
+/**
+ * Propisivanje leka uz vec unet pregled.
+ *
+ * Validacija je ovde posebno vazna jer je rec o terapiji: trajanje mora biti
+ * ceo pozitivan broj, a doza i ucestalost ne smeju ostati prazne.
+ */
+export const createPrescriptionSchema = z.object({
+  medicalRecordId: z.string().min(1, 'Nedostaje pregled uz koji se propisuje lek'),
+  medicationName: z
+    .string()
+    .min(2, 'Naziv leka mora imati najmanje 2 karaktera')
+    .max(200, 'Naziv leka je predugacak'),
+  dosage: z.string().min(1, 'Unesite dozu').max(100, 'Doza je predugacka'),
+  frequency: z.string().min(1, 'Unesite ucestalost').max(100, 'Ucestalost je predugacka'),
+  durationDays: z
+    .number({ invalid_type_error: 'Trajanje mora biti broj' })
+    .int('Trajanje mora biti ceo broj dana')
+    .positive('Trajanje mora biti vece od nule')
+    .max(365, 'Trajanje ne moze biti duze od godinu dana'),
+  notes: z.string().max(500, 'Napomena je predugacka').optional(),
+});
+
+export type CreatePrescriptionInput = z.infer<typeof createPrescriptionSchema>;
+
+/**
+ * Ispravka vec unetog pregleda. Sva polja su opciona, jer lekar obicno menja
+ * samo jedan deo (npr. dopuni napomenu o terapiji).
+ */
+export const updateMedicalRecordSchema = z
+  .object({
+    symptoms: z
+      .string()
+      .min(5, 'Opis simptoma mora imati najmanje 5 karaktera')
+      .max(2000)
+      .optional(),
+    diagnosisCode: z.string().max(20).optional(),
+    diagnosisName: z
+      .string()
+      .min(3, 'Naziv dijagnoze mora imati najmanje 3 karaktera')
+      .max(300)
+      .optional(),
+    therapyNotes: z.string().max(2000).optional(),
+  })
+  .refine((data) => Object.keys(data).length > 0, {
+    message: 'Nije poslata nijedna izmena',
+  });
+
+export type UpdateMedicalRecordInput = z.infer<typeof updateMedicalRecordSchema>;
+
+/**
+ * Narucivanje laboratorijskog nalaza (radi lekar).
+ * Rezultat se ovde NE unosi - nalaz nastaje sa statusom PENDING.
+ */
+export const createLabResultSchema = z.object({
+  patientProfileId: z.string().min(1, 'Izaberite pacijenta'),
+  testType: z
+    .string()
+    .min(3, 'Naziv analize mora imati najmanje 3 karaktera')
+    .max(200, 'Naziv analize je predugacak'),
+  testDate: z.coerce.date({ errorMap: () => ({ message: 'Neispravan datum analize' }) }).optional(),
+});
+
+export type CreateLabResultInput = z.infer<typeof createLabResultSchema>;
+
+/**
+ * Unos rezultata nalaza (radi sestra).
+ * Status se ne prima od klijenta - postavlja se u kodu na COMPLETED.
+ */
+export const updateLabResultSchema = z.object({
+  resultValue: z.string().min(1, 'Unesite izmerenu vrednost').max(100, 'Vrednost je predugacka'),
+  resultUnit: z.string().max(50, 'Jedinica je predugacka').optional(),
+  referenceRange: z.string().max(100, 'Referentni opseg je predugacak').optional(),
+});
+
+export type UpdateLabResultInput = z.infer<typeof updateLabResultSchema>;
