@@ -2,6 +2,7 @@ import type { NextAuthOptions } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import bcrypt from 'bcryptjs';
 import { prisma } from '@/lib/prisma';
+import { checkLoginAttempt, resetLoginAttempts, getClientKey } from '@/lib/security/rateLimiter';
 
 /**
  * Centralna NextAuth konfiguracija.
@@ -22,8 +23,22 @@ export const authOptions: NextAuthOptions = {
       },
 
       // Funkcija koja odlucuje da li je prijava uspesna. Vraca korisnika ili null.
-      async authorize(credentials) {
+      // Drugi argument je sam HTTP zahtev - iz njega se cita adresa posiljaoca
+      // radi ogranicavanja broja pokusaja.
+      async authorize(credentials, request) {
         if (!credentials?.email || !credentials.password) {
+          return null;
+        }
+
+        // Brojac se vodi po adresi i email-u zajedno, da napad na jedan nalog
+        // ne bi zakljucao prijavu svima koji dele istu mrezu.
+        const clientKey = getClientKey(new Headers(request?.headers as HeadersInit));
+        const limiterKey = `${clientKey}:${credentials.email.toLowerCase()}`;
+
+        const allowed = await checkLoginAttempt(limiterKey);
+        if (!allowed) {
+          // Poruka se namerno ne razlikuje od "pogresna lozinka" - napadac ne
+          // treba da sazna da je aktivirao zastitu.
           return null;
         }
 
@@ -47,6 +62,10 @@ export const authOptions: NextAuthOptions = {
         if (!passwordMatches) {
           return null;
         }
+
+        // Uspesna prijava brise brojac, da korisnik koji se omasio u kucanju
+        // ne ostane zakljucan posle ispravne lozinke.
+        await resetLoginAttempts(limiterKey);
 
         // Sve sto se ovde vrati zavrsi u JWT tokenu, pa se passwordHash nikada ne vraca.
         return {
