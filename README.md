@@ -21,6 +21,7 @@ Seminarski rad iz predmeta **Internet tehnologije** — Fakultet organizacionih 
 - [Bezbednost](#bezbednost)
 - [Testiranje](#testiranje)
 - [CI/CD](#cicd)
+- [Deployment na Vercel](#deployment-na-vercel)
 - [Git grane](#git-grane)
 
 ---
@@ -375,6 +376,53 @@ Pipeline (`.github/workflows/ci.yml`) pokreće se pri svakom `push`-u i `pull re
 | `docker` | provera da se Docker slika uspešno gradi                  |
 
 Poslovi `build` i `docker` pokreću se tek kada `lint` i `test` prođu.
+
+---
+
+## Deployment na Vercel
+
+Aplikacija se na Vercel postavlja direktno iz GitHub repozitorijuma, bez dodatnog podesavanja
+build komande.
+
+### 1. Baza podataka
+
+U Vercel dashboard-u: **Storage → Create Database → Postgres**. Vercel sam dodaje promenljivu
+`DATABASE_URL` u podesavanja projekta.
+
+### 2. Promenljive okruzenja
+
+U **Settings → Environment Variables** postaviti:
+
+| Promenljiva       | Vrednost                              | Napomena                                                                      |
+| ----------------- | ------------------------------------- | ----------------------------------------------------------------------------- |
+| `DATABASE_URL`    | automatski od Vercel Postgres baze    | ne unosi se rucno                                                             |
+| `NEXTAUTH_SECRET` | nasumican kljuc                       | `node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"` |
+| `NEXTAUTH_URL`    | `https://<naziv-projekta>.vercel.app` | **mora biti puna adresa ili uopste ne sme postojati**                         |
+
+> **Cesta greska:** ako se `NEXTAUTH_URL` doda kroz formu ali ostane **prazan**, build puca uz
+> `TypeError: Invalid URL`. Razlog je sto NextAuth koristi operator `??`, koji prazan string ne
+> prepoznaje kao nepostojecu vrednost. Aplikacija se od toga brani u `next.config.js`, ali je
+> najbolje promenljivu ili popuniti ispravno ili obrisati.
+
+### 3. Migracije
+
+Vercel automatski pokrece skriptu `vercel-build` ako postoji u `package.json`:
+
+```
+prisma generate && prisma migrate deploy && next build
+```
+
+Zato se migracije primenjuju na produkcionu bazu pri svakom deployment-u. Lokalni `npm run build`
+i Docker koriste obicnu `build` skriptu, bez migracija, jer se one tamo pokrecu odvojeno.
+
+### 4. Demo podaci
+
+Posle prvog uspesnog deployment-a bazu treba napuniti demo podacima. Iz Vercel dashboard-a
+kopirati `DATABASE_URL` i lokalno pokrenuti:
+
+```bash
+DATABASE_URL="<adresa-vercel-baze>" npm run db:seed
+```
 
 ---
 
