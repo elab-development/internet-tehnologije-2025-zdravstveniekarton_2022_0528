@@ -1,4 +1,5 @@
 import { Role, AppointmentStatus } from '@prisma/client';
+import { prisma } from '@/lib/prisma';
 import type { SessionUser } from '@/lib/session';
 
 /**
@@ -67,4 +68,49 @@ export function canUpdateAppointment(
   }
 
   return false;
+}
+
+/**
+ * Vraca id kartona (PatientProfile) prijavljenog pacijenta, ili null ako
+ * korisnik nije pacijent odnosno nema kreiran profil.
+ *
+ * Koristi se da se upit ka bazi ogranici na sopstveni karton - pacijent nikada
+ * ne salje svoj patientProfileId, on se izvodi iz sesije.
+ */
+export async function getOwnPatientProfileId(user: SessionUser): Promise<string | null> {
+  if (user.role !== Role.PATIENT) return null;
+  const profile = await prisma.patientProfile.findUnique({
+    where: { userId: user.id },
+    select: { id: true },
+  });
+  return profile?.id ?? null;
+}
+
+/**
+ * Ko sme da CITA karton odredjenog pacijenta.
+ * - pacijent: samo svoj
+ * - doktor, sestra, administrator: sve kartone, jer im je to potrebno za rad
+ */
+export async function canReadPatientRecords(
+  user: SessionUser,
+  patientProfileId: string,
+): Promise<boolean> {
+  if (user.role === Role.DOCTOR || user.role === Role.NURSE || user.role === Role.ADMIN) {
+    return true;
+  }
+  if (user.role === Role.PATIENT) {
+    const ownProfileId = await getOwnPatientProfileId(user);
+    return ownProfileId === patientProfileId;
+  }
+  return false;
+}
+
+/**
+ * Ko sme da IZMENI vec upisan pregled: iskljucivo lekar koji ga je i napisao.
+ *
+ * Ni sestra ni administrator ne smeju da menjaju dijagnozu i terapiju - to je
+ * strucna odgovornost lekara i sustina podele prava u ovoj aplikaciji.
+ */
+export function canUpdateMedicalRecord(user: SessionUser, recordDoctorId: string): boolean {
+  return user.role === Role.DOCTOR && recordDoctorId === user.id;
 }

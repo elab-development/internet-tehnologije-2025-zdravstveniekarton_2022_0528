@@ -73,3 +73,30 @@ export const updateAppointmentSchema = z
   });
 
 export type UpdateAppointmentInput = z.infer<typeof updateAppointmentSchema>;
+
+/**
+ * Kreiranje pregleda (unos u karton).
+ *
+ * doctorId se NE prima od klijenta - uzima se iz sesije prijavljenog lekara,
+ * da niko ne bi mogao da upise pregled u tudje ime.
+ * Polje diagnosisCode (ICD-10 sifra) dodaje se u kasnijoj fazi.
+ */
+export const createMedicalRecordSchema = z.object({
+  patientProfileId: z.string().min(1, 'Izaberite pacijenta'),
+  appointmentId: z.string().optional(),
+  visitDate: z.coerce
+    .date({ errorMap: () => ({ message: 'Neispravan datum pregleda' }) })
+    .max(new Date(), 'Datum pregleda ne moze biti u buducnosti')
+    .optional(),
+  symptoms: z
+    .string()
+    .min(5, 'Opis simptoma mora imati najmanje 5 karaktera')
+    .max(2000, 'Opis simptoma je predugacak'),
+  diagnosisName: z
+    .string()
+    .min(3, 'Naziv dijagnoze mora imati najmanje 3 karaktera')
+    .max(300, 'Naziv dijagnoze je predugacak'),
+  therapyNotes: z.string().max(2000, 'Napomena o terapiji je predugacka').optional(),
+});
+
+export type CreateMedicalRecordInput = z.infer<typeof createMedicalRecordSchema>;
