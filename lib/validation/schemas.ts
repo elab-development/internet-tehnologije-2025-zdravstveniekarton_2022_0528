@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { AppointmentStatus, AllergySeverity } from '@prisma/client';
+import { AppointmentStatus, AllergySeverity, Role } from '@prisma/client';
 
 /**
  * Zod seme za validaciju podataka koji stizu sa klijenta.
@@ -196,3 +196,35 @@ export const createAllergySchema = z.object({
 });
 
 export type CreateAllergyInput = z.infer<typeof createAllergySchema>;
+
+/**
+ * Kreiranje naloga osoblja (radi administrator).
+ *
+ * Dozvoljene su samo uloge DOCTOR i NURSE - administrator ne moze kroz ovu
+ * formu da napravi drugog administratora, niti pacijenta (pacijenti se
+ * registruju sami). Za lekara su specijalizacija i broj licence obavezni.
+ */
+export const createStaffSchema = z
+  .object({
+    email: z.string().email('Neispravna email adresa'),
+    password: passwordSchema,
+    fullName: z.string().min(3, 'Ime i prezime moraju imati najmanje 3 karaktera').max(100),
+    phone: z.string().max(30).optional(),
+    role: z.enum([Role.DOCTOR, Role.NURSE], {
+      errorMap: () => ({ message: 'Izaberite ulogu: lekar ili sestra' }),
+    }),
+    specialization: z.string().max(100).optional(),
+    licenseNumber: z.string().max(50).optional(),
+    officeRoom: z.string().max(20).optional(),
+  })
+  .refine((data) => data.role !== Role.DOCTOR || (data.specialization && data.licenseNumber), {
+    message: 'Za lekara su obavezni specijalizacija i broj licence',
+    path: ['specialization'],
+  });
+
+export type CreateStaffInput = z.infer<typeof createStaffSchema>;
+
+/** Aktivacija odnosno deaktivacija naloga. */
+export const updateUserStatusSchema = z.object({
+  isActive: z.boolean({ invalid_type_error: 'Vrednost mora biti tacno ili netacno' }),
+});
