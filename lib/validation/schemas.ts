@@ -126,3 +126,28 @@ export const createPrescriptionSchema = z.object({
 });
 
 export type CreatePrescriptionInput = z.infer<typeof createPrescriptionSchema>;
+
+/**
+ * Ispravka vec unetog pregleda. Sva polja su opciona, jer lekar obicno menja
+ * samo jedan deo (npr. dopuni napomenu o terapiji).
+ */
+export const updateMedicalRecordSchema = z
+  .object({
+    symptoms: z
+      .string()
+      .min(5, 'Opis simptoma mora imati najmanje 5 karaktera')
+      .max(2000)
+      .optional(),
+    diagnosisCode: z.string().max(20).optional(),
+    diagnosisName: z
+      .string()
+      .min(3, 'Naziv dijagnoze mora imati najmanje 3 karaktera')
+      .max(300)
+      .optional(),
+    therapyNotes: z.string().max(2000).optional(),
+  })
+  .refine((data) => Object.keys(data).length > 0, {
+    message: 'Nije poslata nijedna izmena',
+  });
+
+export type UpdateMedicalRecordInput = z.infer<typeof updateMedicalRecordSchema>;
