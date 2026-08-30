@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { AppointmentStatus } from '@prisma/client';
@@ -33,7 +33,7 @@ type Appointment = {
  *  - useState        -> podaci forme i greske
  *  - useRouter       -> preusmerenje na karton posle upisa
  */
-export default function CreateMedicalRecordPage() {
+function CreateMedicalRecordPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -217,5 +217,26 @@ export default function CreateMedicalRecordPage() {
         </form>
       </Card>
     </main>
+  );
+}
+
+/**
+ * useSearchParams() cita parametre iz adrese, sto je moguce tek u browseru.
+ * Zato Next.js trazi da takva komponenta bude unutar <Suspense> granice -
+ * bez toga "next build" ne moze unapred da pripremi stranicu i build puca.
+ *
+ * Fallback je ono sto se vidi dok se komponenta ne ucita.
+ */
+export default function CreateMedicalRecordPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="page-container">
+          <p className="text-sm text-slate-500">Ucitavanje forme...</p>
+        </main>
+      }
+    >
+      <CreateMedicalRecordPageContent />
+    </Suspense>
   );
 }

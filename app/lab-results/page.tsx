@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
@@ -40,7 +40,7 @@ const emptyResultForm = { resultValue: '', resultUnit: '', referenceRange: '' };
  *
  * Koriscene kuke: useSession, useState, useEffect, useCallback.
  */
-export default function LabResultsPage() {
+function LabResultsPageContent() {
   const { data: session } = useSession();
   const role = session?.user?.role;
   const searchParams = useSearchParams();
@@ -265,5 +265,26 @@ export default function LabResultsPage() {
         </div>
       </Modal>
     </main>
+  );
+}
+
+/**
+ * useSearchParams() cita parametre iz adrese, sto je moguce tek u browseru.
+ * Zato Next.js trazi da takva komponenta bude unutar <Suspense> granice -
+ * bez toga "next build" ne moze unapred da pripremi stranicu i build puca.
+ *
+ * Fallback je ono sto se vidi dok se komponenta ne ucita.
+ */
+export default function LabResultsPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="page-container">
+          <p className="text-sm text-slate-500">Ucitavanje nalaza...</p>
+        </main>
+      }
+    >
+      <LabResultsPageContent />
+    </Suspense>
   );
 }

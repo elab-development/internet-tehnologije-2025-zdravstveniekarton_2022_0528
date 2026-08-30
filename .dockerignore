@@ -1,0 +1,21 @@
+# Fajlovi koji ne treba da udju u Docker sliku.
+# Manje kopiranja znaci brzi build i manju sliku.
+
+node_modules
+.next
+.git
+.github
+coverage
+__tests__
+
+# Tajne nikada ne ulaze u sliku - env varijable se prosledjuju pri pokretanju.
+.env
+.env*.local
+
+.vscode
+.idea
+.DS_Store
+Thumbs.db
+npm-debug.log*
+README.md
+docs

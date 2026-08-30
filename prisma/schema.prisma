@@ -3,6 +3,10 @@
 
 generator client {
   provider = "prisma-client-js"
+  // "native" je engine za masinu na kojoj se razvija (Windows/macOS), a
+  // "linux-musl-openssl-3.0.x" je engine za Alpine Linux u Docker kontejneru.
+  // Bez ovog drugog, Prisma u kontejneru ne moze da ucita svoj engine.
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
 }
 
 datasource db {
