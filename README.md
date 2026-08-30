@@ -1,8 +1,8 @@
 # Zdravstveni e-Karton
 
-Veb aplikacija za vođenje elektronskog zdravstvenog kartona pacijenata u zdravstvenoj ustanovi.
+Veb aplikacija za vođenje elektronskog zdravstvenog kartona pacijenata.
 
-Seminarski rad iz predmeta **Internet tehnologije** — Fakultet organizacionih nauka, Univerzitet u Beogradu.
+Seminarski rad iz predmeta **Internet tehnologije** — Fakultet organizacionih nauka.
 
 ---
 
@@ -11,97 +11,92 @@ Seminarski rad iz predmeta **Internet tehnologije** — Fakultet organizacionih 
 - [O aplikaciji](#o-aplikaciji)
 - [Korisničke uloge](#korisničke-uloge)
 - [Tehnologije](#tehnologije)
-- [Eksterni API-ji](#eksterni-api-ji)
-- [Pokretanje aplikacije](#pokretanje-aplikacije)
-- [Pokretanje kroz Docker](#pokretanje-kroz-docker)
+- [Brzo pokretanje](#brzo-pokretanje)
+- [Demo nalozi](#demo-nalozi)
+- [Sve komande](#sve-komande)
 - [Struktura projekta](#struktura-projekta)
+- [Model podataka](#model-podataka)
+- [API dokumentacija](#api-dokumentacija)
+- [Eksterni API-ji](#eksterni-api-ji)
+- [Bezbednost](#bezbednost)
+- [Testiranje](#testiranje)
+- [CI/CD](#cicd)
 - [Git grane](#git-grane)
-- [Plan razvoja](#plan-razvoja)
 
 ---
 
 ## O aplikaciji
 
-Aplikacija digitalizuje zdravstveni karton pacijenta. Umesto papirne dokumentacije, svi podaci o
-pacijentu — istorija pregleda, postavljene dijagnoze, propisana terapija, laboratorijski nalazi i
-evidentirane alergije — čuvaju se na jednom mestu i dostupni su isključivo osobama koje na njih
-imaju pravo.
+Aplikacija digitalizuje zdravstveni karton pacijenta. Umesto papirne dokumentacije, istorija
+pregleda, postavljene dijagnoze, propisana terapija, laboratorijski nalazi i evidentirane alergije
+čuvaju se na jednom mestu i dostupni su isključivo osobama koje na njih imaju pravo.
 
-Osnovni tok kroz aplikaciju:
+**Osnovni tok kroz sistem:**
 
-1. Pacijent se registruje i traži termin kod izabranog doktora.
-2. Medicinska sestra potvrđuje ili otkazuje termin.
-3. Doktor obavlja pregled i unosi ga u karton — simptome, dijagnozu (uz pretragu zvanične ICD-10
-   šifre) i terapiju.
-4. Doktor propisuje recept i po potrebi naručuje laboratorijski nalaz.
-5. Sestra unosi rezultat nalaza.
-6. Pacijent u svom kartonu vidi celokupnu hronološku istoriju — preglede, recepte i nalaze.
+```
+Pacijent                Sestra              Doktor                  Sestra
+   │                      │                    │                       │
+   ├─ traži termin ──────►│                    │                       │
+   │                      ├─ potvrđuje ───────►│                       │
+   │                      │                    ├─ unosi pregled        │
+   │                      │                    │  (ICD-10 dijagnoza)   │
+   │                      │                    ├─ propisuje recept     │
+   │                      │                    │  (openFDA info)       │
+   │                      │                    ├─ naručuje nalaz ─────►│
+   │                      │                    │                       ├─ unosi rezultat
+   │◄─────────── sve vidi u svom kartonu ──────────────────────────────┘
+```
 
-Pošto je reč o osetljivim zdravstvenim podacima, poseban akcenat u implementaciji stavljen je na
-**autorizaciju po ulogama** i **zaštitu od IDOR napada** — pacijent ni na koji način ne može doći do
-tuđeg kartona.
+Pošto je reč o osetljivim zdravstvenim podacima, akcenat je stavljen na **autorizaciju po ulogama**
+i **zaštitu od IDOR napada** — pacijent ni na koji način ne može doći do tuđeg kartona.
 
-> Napomena: aplikacija je studentski projekat namenjen demonstraciji veb tehnologija. Nije
+> **Napomena:** aplikacija je studentski projekat namenjen demonstraciji veb tehnologija. Nije
 > medicinski sertifikovana i ne sme se koristiti za stvarne kliničke odluke.
 
 ---
 
 ## Korisničke uloge
 
-| Uloga             | Ko je                        | Šta može                                                                                     |
-| ----------------- | ---------------------------- | -------------------------------------------------------------------------------------------- |
-| **Pacijent**      | vlasnik sopstvenog kartona   | pregleda svoju istoriju bolesti, recepte, nalaze i alergije; traži termin                    |
-| **Sestra**        | medicinska sestra / tehničar | potvrđuje i otkazuje termine, unosi laboratorijske nalaze i alergije                         |
-| **Doktor**        | lekar                        | pregleda kartone pacijenata, kreira preglede i dijagnoze, propisuje recepte, naručuje nalaze |
-| **Administrator** | IT osoblje ustanove          | kreira naloge doktora i sestara, aktivira/deaktivira naloge, prati statistiku sistema        |
+| Uloga             | Ko je               | Šta može                                                                          | Šta ne može                                               |
+| ----------------- | ------------------- | --------------------------------------------------------------------------------- | --------------------------------------------------------- |
+| **Pacijent**      | vlasnik kartona     | vidi svoju istoriju, recepte i nalaze; traži termin; otkazuje svoj termin         | ništa tuđe; ne potvrđuje termine; ne menja svoje alergije |
+| **Sestra**        | medicinski tehničar | potvrđuje i otkazuje termine, unosi rezultate nalaza i alergije                   | ne postavlja dijagnozu ni terapiju                        |
+| **Doktor**        | lekar               | kreira preglede i dijagnoze, propisuje recepte, naručuje nalaze, vidi sve kartone | ne menja tuđe preglede; nema admin funkcije               |
+| **Administrator** | IT osoblje ustanove | kreira naloge osoblja, deaktivira naloge, prati statistiku                        | ne „leči“ — ne unosi dijagnoze ni rezultate               |
 
-Samo se **pacijent registruje samostalno**. Naloge doktora i sestara kreira administrator, kao i u
+Samo se **pacijent registruje samostalno**. Naloge doktora i sestara otvara administrator, kao i u
 stvarnom zdravstvenom sistemu.
 
 ---
 
 ## Tehnologije
 
-| Sloj              | Tehnologija                                      |
-| ----------------- | ------------------------------------------------ |
-| Framework         | Next.js 14 (App Router), React 18, TypeScript    |
-| Stilizovanje      | Tailwind CSS                                     |
-| Baza podataka     | PostgreSQL                                       |
-| ORM i migracije   | Prisma                                           |
-| Autentifikacija   | NextAuth.js (Credentials provider, JWT) + bcrypt |
-| Validacija        | Zod                                              |
-| Grafikoni         | Chart.js                                         |
-| Testiranje        | Jest + React Testing Library                     |
-| API dokumentacija | OpenAPI 3.0 (Swagger UI)                         |
-| Kontejnerizacija  | Docker + Docker Compose                          |
-| CI/CD             | GitHub Actions                                   |
-| Hosting           | Vercel (aplikacija i PostgreSQL baza)            |
+| Sloj              | Tehnologija                                                          |
+| ----------------- | -------------------------------------------------------------------- |
+| Framework         | Next.js 14 (App Router), React 18, TypeScript                        |
+| Stilizovanje      | Tailwind CSS                                                         |
+| Baza podataka     | PostgreSQL 16                                                        |
+| ORM i migracije   | Prisma                                                               |
+| Autentifikacija   | NextAuth.js (Credentials provider, JWT u httpOnly kolačiću) + bcrypt |
+| Validacija        | Zod                                                                  |
+| Grafikoni         | Chart.js                                                             |
+| Testiranje        | Jest + React Testing Library                                         |
+| API dokumentacija | OpenAPI 3.0.3 + Swagger UI                                           |
+| Kontejnerizacija  | Docker + Docker Compose                                              |
+| CI/CD             | GitHub Actions                                                       |
+| Hosting           | Vercel (aplikacija i baza)                                           |
 
 ---
 
-## Eksterni API-ji
-
-Aplikacija koristi dva besplatna javna API-ja, oba kroz sopstvene proxy rute (`/api/external/*`):
-
-1. **ICD-10-CM Clinical Table Search Service** (National Library of Medicine) — pretraga zvaničnih
-   šifara dijagnoza dok doktor unosi pregled.
-2. **openFDA Drug Label API** — prikaz osnovnih informacija o leku (indikacije, upozorenja) dok
-   doktor propisuje recept.
-
-Oba API-ja služe **isključivo kao pomoć pri unosu podataka**, a ne kao izvor istine za medicinske
-odluke.
-
----
-
-## Pokretanje aplikacije
+## Brzo pokretanje
 
 ### Preduslovi
 
-- [Node.js](https://nodejs.org/) 18 ili noviji
-- [Docker Desktop](https://www.docker.com/products/docker-desktop/) (za pokretanje baze)
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/)
+- [Node.js](https://nodejs.org/) 18+
 - [Git](https://git-scm.com/)
 
-### 1. Kloniranje i instalacija
+### Priprema
 
 ```bash
 git clone https://github.com/elab-development/internet-tehnologije-2025-zdravstveniekarton_2022_0528.git
@@ -112,129 +107,278 @@ cd internet-tehnologije-2025-zdravstveniekarton_2022_0528
 ```
 
 ```bash
-npm install
-```
-
-### 2. Podešavanje okruženja
-
-Kopirati `.env.example` u `.env` i popuniti vrednosti:
-
-```bash
 cp .env.example .env
 ```
 
-### 3. Pokretanje razvojnog servera
+U `.env` postaviti `NEXTAUTH_SECRET` na nasumičnu vrednost. Ključ se generiše komandom:
+
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
+```
+
+---
+
+### Varijanta A: Docker (preporučeno)
+
+Pokreće i bazu i aplikaciju jednom komandom.
+
+```bash
+docker compose up --build
+```
+
+Aplikacija je dostupna na **http://localhost:3000**. Migracije se primenjuju automatski pri
+pokretanju.
+
+Punjenje demo podacima (u drugom terminalu):
+
+```bash
+npm install
+```
+
+```bash
+npm run db:seed
+```
+
+Gašenje:
+
+```bash
+docker compose down
+```
+
+---
+
+### Varijanta B: lokalno
+
+Baza u Dockeru, aplikacija na host mašini — pogodno za razvoj.
+
+```bash
+npm install
+```
+
+```bash
+npm run db:up
+```
+
+```bash
+npx prisma migrate deploy
+```
+
+```bash
+npm run db:seed
+```
 
 ```bash
 npm run dev
 ```
 
-Aplikacija je dostupna na [http://localhost:3000](http://localhost:3000).
-
-### Demo nalozi
-
-Nakon `npm run db:seed` dostupni su nalozi za isprobavanje. Lozinka za sve je
-`lozinka123`.
-
-| Email                  | Uloga                   |
-| ---------------------- | ----------------------- |
-| `admin@ekarton.rs`     | administrator           |
-| `jovanovic@ekarton.rs` | doktor (opsta medicina) |
-| `petrovic@ekarton.rs`  | doktor (kardiologija)   |
-| `sestra@ekarton.rs`    | medicinska sestra       |
-| `marko@primer.rs`      | pacijent                |
-| `ana@primer.rs`        | pacijent                |
-
-### Korisne komande
-
-| Komanda              | Opis                           |
-| -------------------- | ------------------------------ |
-| `npm run dev`        | razvojni server                |
-| `npm run build`      | produkcioni build              |
-| `npm run start`      | pokretanje produkcionog builda |
-| `npm run lint`       | provera koda ESLint-om         |
-| `npm run type-check` | provera TypeScript tipova      |
-| `npm run format`     | formatiranje koda Prettier-om  |
+> **Napomena o portu:** baza je izložena na portu **5433**, a ne 5432, da ne bi došlo do sudara sa
+> lokalno instaliranim PostgreSQL-om. Unutar Docker mreže aplikacija koristi `db:5432`.
 
 ---
 
-## API dokumentacija
+## Demo nalozi
 
-Specifikacija je napisana po **OpenAPI 3.0.3** standardu i nalazi se u
-`public/swagger.json`. Interaktivni prikaz dostupan je na
-[http://localhost:3000/api-docs](http://localhost:3000/api-docs).
+Dostupni nakon `npm run db:seed`. Lozinka za sve naloge je **`lozinka123`**.
 
-Dokumentovano je 20 ruta sa 28 operacija, grupisanih u 11 celina (Auth, Users,
-Patients, Appointments, MedicalRecords, Prescriptions, LabResults, Allergies,
-Stats, External...). Za svaku rutu opisani su ulazni podaci, oblik odgovora i
-svi HTTP statusi koje ruta moze da vrati (200, 201, 400, 401, 403, 404, 409, 429).
+| Email                  | Uloga                   | Za šta je koristan                                            |
+| ---------------------- | ----------------------- | ------------------------------------------------------------- |
+| `admin@ekarton.rs`     | Administrator           | admin panel, statistika cele ustanove                         |
+| `jovanovic@ekarton.rs` | Doktor (opšta medicina) | unos pregleda, recepti, naručivanje nalaza                    |
+| `petrovic@ekarton.rs`  | Doktor (kardiologija)   | provera da doktor ne vidi tuđe termine                        |
+| `sestra@ekarton.rs`    | Medicinska sestra       | potvrda termina, unos rezultata nalaza                        |
+| `marko@primer.rs`      | Pacijent                | ima pregled, recepte, nalaz i **tešku alergiju na penicilin** |
+| `ana@primer.rs`        | Pacijent                | provera IDOR zaštite između dva pacijenta                     |
+
+---
+
+## Sve komande
+
+| Komanda                             | Opis                                            |
+| ----------------------------------- | ----------------------------------------------- |
+| `npm run dev`                       | razvojni server                                 |
+| `npm run build`                     | produkcioni build (uključuje `prisma generate`) |
+| `npm run start`                     | pokretanje produkcionog builda                  |
+| `npm test`                          | automatizovani testovi                          |
+| `npm run test:coverage`             | testovi sa izveštajem o pokrivenosti            |
+| `npm run lint`                      | provera koda ESLint-om                          |
+| `npm run type-check`                | provera TypeScript tipova                       |
+| `npm run format`                    | formatiranje koda Prettier-om                   |
+| `npm run format:check`              | provera formatiranja (koristi je CI)            |
+| `npm run db:up` / `npm run db:down` | pokretanje i gašenje baze u Dockeru             |
+| `npm run db:seed`                   | punjenje baze demo podacima                     |
 
 ---
 
 ## Struktura projekta
 
 ```
-├── app/            stranice i API rute (Next.js App Router)
-├── components/     React komponente (ui/, layout/, charts/, ...)
-├── lib/            pomoćni kod — Prisma klijent, auth, validacija, bezbednost
-├── prisma/         šema baze, migracije i seed podaci
-├── __tests__/      automatizovani testovi
-├── docs/           projektna dokumentacija
-└── public/         statički fajlovi i Swagger specifikacija
+├── app/
+│   ├── (auth)/login, (auth)/register    prijava i registracija
+│   ├── dashboard/                       početna po ulozi (serverska komponenta)
+│   ├── appointments/                    termini
+│   ├── patients/                        pacijenti i kartoni
+│   ├── medical-records/                 pregledi i terapija
+│   ├── lab-results/                     laboratorijski nalazi
+│   ├── admin/                           upravljanje nalozima
+│   ├── stats/                           grafikoni
+│   ├── api-docs/                        Swagger UI
+│   └── api/                             REST API rute
+├── components/
+│   ├── ui/                              Button, Input, Select, Card, Modal
+│   ├── appointments/, medical/          komponente po domenu
+│   └── charts/, dashboard/, layout/
+├── lib/
+│   ├── prisma.ts, auth.ts, session.ts   baza i autentifikacija
+│   ├── validation/schemas.ts            Zod šeme (sa XSS sanitizacijom)
+│   ├── security/                        idor, csrf, sanitize, rateLimiter
+│   └── external/                        icd10, drugInfo
+├── prisma/
+│   ├── schema.prisma                    8 modela
+│   ├── migrations/                      6 migracija
+│   └── seed.ts                          demo podaci
+├── __tests__/                           134 testa
+├── public/swagger.json                  OpenAPI specifikacija
+├── middleware.ts                        RBAC + CSRF
+├── Dockerfile, docker-compose.yml
+└── .github/workflows/ci.yml
 ```
+
+---
+
+## Model podataka
+
+Osam međusobno povezanih modela:
+
+```
+User ──1:1── PatientProfile ──1:N── MedicalRecord ──1:N── Prescription
+ │                  │                      │
+ │                  ├──1:N── LabResult      └── veza ka doktoru (User)
+ │                  └──1:N── Allergy
+ ├──1:1── DoctorProfile
+ ├──1:N── Appointment (kao pacijent)
+ └──1:N── Appointment (kao doktor)
+
+Appointment ──1:1 (opciono)── MedicalRecord
+```
+
+**Migracije** (`prisma/migrations/`) obuhvataju tri različita tipa:
+
+| Migracija                              | Tip                                   |
+| -------------------------------------- | ------------------------------------- |
+| `init`                                 | kreiranje tabele i enum tipa          |
+| `add_patient_and_doctor_profiles`      | nove tabele + strani ključevi         |
+| `add_clinical_models`                  | 5 tabela + 10 stranih ključeva        |
+| `add_diagnosis_code_to_medical_record` | **dodavanje kolone**                  |
+| `add_is_active_to_user`                | **dodavanje kolone**                  |
+| `add_constraints_and_indexes`          | **jedinstvena ograničenja i indeksi** |
+
+---
+
+## API dokumentacija
+
+Specifikacija je pisana po **OpenAPI 3.0.3** standardu (`public/swagger.json`), a interaktivni
+prikaz je na **[/api-docs](http://localhost:3000/api-docs)**.
+
+Dokumentovano je **20 ruta sa 28 operacija** u 11 grupa. Za svaku rutu opisani su ulazni podaci,
+oblik odgovora, ko sme da je pozove i svi HTTP statusi (`200`, `201`, `400`, `401`, `403`, `404`,
+`409`, `429`).
+
+Svi odgovori su u JSON formatu:
+
+```jsonc
+{ "data": ... }                                // uspeh
+{ "error": "Nemate ovlascenje za ovu akciju" } // greška
+{ "error": "Podaci nisu ispravni", "fields": { "jmbg": "..." } } // greška validacije
+```
+
+---
+
+## Eksterni API-ji
+
+Oba su besplatna, ne traže API ključ i pozivaju se **isključivo kroz sopstvene proxy rute**
+(`/api/external/*`) — tako ostaju zaštićene ulogom i nema CORS problema.
+
+| API                           | Izvor                        | Gde se koristi                                                       |
+| ----------------------------- | ---------------------------- | -------------------------------------------------------------------- |
+| **ICD-10-CM Clinical Tables** | National Library of Medicine | pretraga zvaničnih šifara dijagnoza pri unosu pregleda               |
+| **openFDA Drug Label**        | FDA (SAD)                    | informacije o leku (indikacije, upozorenja) pri propisivanju recepta |
+
+Oba služe **kao pomoć pri unosu, a ne kao izvor istine** za medicinske odluke. Ako lek nije u FDA
+bazi — a mnogi sa našeg tržišta nisu, npr. _paracetamol_ — prikazuje se poruka, ali se unos recepta
+ne blokira.
+
+---
+
+## Bezbednost
+
+| Napad             | Zaštita                                                        | Gde                           |
+| ----------------- | -------------------------------------------------------------- | ----------------------------- |
+| **IDOR**          | provera vlasništva nad konkretnim zapisom pre svakog pristupa  | `lib/security/idor.ts`        |
+| **XSS**           | čišćenje HTML-a iz svakog tekstualnog unosa pre upisa u bazu   | `lib/security/sanitize.ts`    |
+| **CSRF**          | provera `Origin` zaglavlja za sve zahteve koji menjaju podatke | `lib/security/csrf.ts`        |
+| **SQL Injection** | Prisma parametrizuje svaki upit; nema sirovog SQL-a            | `lib/prisma.ts`               |
+| **Brute-force**   | 5 pokušaja prijave / 15 min, 3 registracije / sat              | `lib/security/rateLimiter.ts` |
+
+Dodatno:
+
+- lozinke se čuvaju kao **bcrypt heš**, nikad kao tekst, i `passwordHash` se **nikada** ne vraća
+  kroz API
+- sesija je **JWT u httpOnly kolačiću** — JavaScript ne može da je pročita
+- prijava ne razlikuje „nepostojeći email“ od „pogrešna lozinka“ (sprečava mapiranje naloga)
+- zaštita postoji u **dva sloja**: `middleware.ts` štiti stranice po ulozi, a svaka API ruta ponovo
+  proverava pozivaoca — jer se API može pozvati i direktno, van aplikacije
+
+---
+
+## Testiranje
+
+```bash
+npm test
+```
+
+**134 testa** u četiri grupe:
+
+| Grupa                | Šta pokriva                                                  |
+| -------------------- | ------------------------------------------------------------ |
+| `validation.test.ts` | sve Zod šeme — ispravni i neispravni unosi                   |
+| `security.test.ts`   | XSS sanitizacija, IDOR pravila, RBAC rute                    |
+| `csrf.test.ts`       | provera `Origin` zaglavlja                                   |
+| `ui.test.tsx`        | `Button`, `Input`, `Select`, `Card`, `Modal`, oznake statusa |
+
+Najvredniji su **autorizacioni testovi**, koji doslovno tvrde stvari poput „pacijent ne može da
+pročita tuđi termin“ ili „sestra ne sme da menja dijagnozu“.
 
 ---
 
 ## CI/CD
 
-Pri svakom guranju koda i pull request-u ka granama `main` i `develop`
-pokrece se GitHub Actions pipeline (`.github/workflows/ci.yml`) sa cetiri posla:
+Pipeline (`.github/workflows/ci.yml`) pokreće se pri svakom `push`-u i `pull request`-u ka granama
+`main` i `develop`:
 
-| Posao    | Sta radi                                                 |
-| -------- | -------------------------------------------------------- |
-| `lint`   | ESLint, provera TypeScript tipova i provera formatiranja |
-| `test`   | pokretanje testova sa izvestajem o pokrivenosti koda     |
-| `build`  | produkcioni `next build`                                 |
-| `docker` | provera da se Docker slika uspesno gradi                 |
+| Posao    | Šta radi                                                  |
+| -------- | --------------------------------------------------------- |
+| `lint`   | ESLint + provera TypeScript tipova + provera formatiranja |
+| `test`   | testovi sa izveštajem o pokrivenosti koda                 |
+| `build`  | produkcioni `next build`                                  |
+| `docker` | provera da se Docker slika uspešno gradi                  |
 
-Poslovi `build` i `docker` pokrecu se tek kada `lint` i `test` prodju, pa se
-ne trosi vreme na gradjenje koda koji ionako ne valja.
+Poslovi `build` i `docker` pokreću se tek kada `lint` i `test` prođu.
 
 ---
 
 ## Git grane
 
-| Grana       | Namena                       |
-| ----------- | ---------------------------- |
-| `main`      | stabilna produkciona verzija |
-| `develop`   | integraciona grana           |
-| `feature/*` | pojedinačne funkcionalnosti  |
+| Grana       | Namena                                   |
+| ----------- | ---------------------------------------- |
+| `main`      | stabilna produkciona verzija             |
+| `develop`   | integraciona grana                       |
+| `feature/*` | 11 grana, po jedna za svaku fazu razvoja |
 
 Feature grane se u `develop` spajaju sa `--no-ff`, tako da svaki spoj ostaje vidljiv kao zaseban
-merge commit u istoriji.
-
----
-
-## Plan razvoja
-
-- [x] Faza 0 — inicijalizacija projekta
-- [ ] Faza 1 — baza podataka, modeli i migracije
-- [ ] Faza 2 — autentifikacija i autorizacija
-- [ ] Faza 3 — reusable UI komponente
-- [ ] Faza 4 — zakazivanje i upravljanje terminima
-- [ ] Faza 5 — karton pacijenta i medicinski pregledi
-- [ ] Faza 6 — recepti i laboratorijski nalazi
-- [ ] Faza 7 — alergije i dashboard
-- [ ] Faza 8 — administratorski panel
-- [ ] Faza 9 — statistika i grafikoni
-- [ ] Faza 10 — bezbednost (XSS, CSRF, IDOR, rate limiting)
-- [ ] Faza 11 — automatizovani testovi
-- [ ] Faza 12 — Docker, Swagger i CI/CD
-- [ ] Faza 13 — finalna dokumentacija
+merge commit. Grane se **ne brišu** posle spajanja, da istorija razvoja ostane pregledna.
 
 ---
 
 ## Autori
 
-Seminarski rad — Internet tehnologije, FON.
-Mentor: Tamara Naumović.
+Seminarski rad — Internet tehnologije, Fakultet organizacionih nauka.
