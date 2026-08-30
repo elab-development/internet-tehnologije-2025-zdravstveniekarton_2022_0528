@@ -39,6 +39,8 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/lab-results', label: 'Nalazi', roles: [Role.PATIENT, Role.NURSE, Role.DOCTOR] },
   { href: '/stats', label: 'Statistika', roles: [Role.DOCTOR, Role.ADMIN] },
   { href: '/admin', label: 'Administracija', roles: [Role.ADMIN] },
+  // API dokumentacija je korisna samo tehnickom osoblju ustanove.
+  { href: '/api-docs', label: 'API', roles: [Role.ADMIN] },
 ];
 
 // Naziv uloge na srpskom, za prikaz pored imena korisnika.

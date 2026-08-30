@@ -158,6 +158,19 @@ Nakon `npm run db:seed` dostupni su nalozi za isprobavanje. Lozinka za sve je
 
 ---
 
+## API dokumentacija
+
+Specifikacija je napisana po **OpenAPI 3.0.3** standardu i nalazi se u
+`public/swagger.json`. Interaktivni prikaz dostupan je na
+[http://localhost:3000/api-docs](http://localhost:3000/api-docs).
+
+Dokumentovano je 20 ruta sa 28 operacija, grupisanih u 11 celina (Auth, Users,
+Patients, Appointments, MedicalRecords, Prescriptions, LabResults, Allergies,
+Stats, External...). Za svaku rutu opisani su ulazni podaci, oblik odgovora i
+svi HTTP statusi koje ruta moze da vrati (200, 201, 400, 401, 403, 404, 409, 429).
+
+---
+
 ## Struktura projekta
 
 ```

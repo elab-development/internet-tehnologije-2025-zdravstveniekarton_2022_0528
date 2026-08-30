@@ -1,0 +1,927 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Zdravstveni e-Karton API",
+    "version": "1.0.0",
+    "description": "REST API veb aplikacije za elektronski zdravstveni karton.\n\n**Autentifikacija** se obavlja preko NextAuth-a. Posle prijave browser dobija httpOnly kolacic `next-auth.session-token` koji se automatski salje uz svaki zahtev.\n\n**Autorizacija** ima dva nivoa:\n1. *provera uloge* - da li uloga uopste sme da poziva ovu rutu,\n2. *IDOR provera* - da li pozivalac sme da pristupi bas tom zapisu (npr. pacijent samo svom kartonu).\n\n**Format odgovora** je uvek JSON:\n- uspeh: `{ \"data\": ... }`\n- greska: `{ \"error\": \"poruka\" }`\n- greska validacije: `{ \"error\": \"Podaci nisu ispravni\", \"fields\": { \"polje\": \"poruka\" } }`",
+    "contact": {
+      "name": "Seminarski rad - Internet tehnologije, FON"
+    }
+  },
+  "servers": [
+    { "url": "http://localhost:3000/api", "description": "Lokalno okruzenje" }
+  ],
+  "tags": [
+    { "name": "Auth", "description": "Registracija i prijava korisnika" },
+    { "name": "Users", "description": "Upravljanje nalozima (samo administrator)" },
+    { "name": "Patients", "description": "Pacijenti i njihovi kartoni" },
+    { "name": "Doctors", "description": "Spisak lekara" },
+    { "name": "Appointments", "description": "Zakazivanje i upravljanje terminima" },
+    { "name": "MedicalRecords", "description": "Pregledi u kartonu pacijenta" },
+    { "name": "Prescriptions", "description": "Propisivanje terapije" },
+    { "name": "LabResults", "description": "Laboratorijski nalazi" },
+    { "name": "Allergies", "description": "Alergije pacijenata" },
+    { "name": "Stats", "description": "Agregirani podaci za grafikone" },
+    { "name": "External", "description": "Proxy rute ka eksternim API-jima" }
+  ],
+  "paths": {
+    "/auth/register": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Registracija pacijenta",
+        "description": "Javna ruta. Uloga se postavlja na serveru i uvek je PATIENT - poslata vrednost `role` se ignorise. Naloge lekara i sestara kreira administrator.",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/RegisterInput" }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Nalog kreiran",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": { "data": { "$ref": "#/components/schemas/User" } }
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/ValidationError" },
+          "409": { "$ref": "#/components/responses/Conflict" },
+          "429": { "$ref": "#/components/responses/TooManyRequests" }
+        }
+      }
+    },
+    "/auth/[...nextauth]": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Prijava i odjava (NextAuth)",
+        "description": "Rute kojima upravlja NextAuth:\n- `POST /api/auth/callback/credentials` - prijava (email + lozinka)\n- `POST /api/auth/signout` - odjava\n- `GET /api/auth/session` - podaci o prijavljenom korisniku\n- `GET /api/auth/csrf` - CSRF token koji se salje uz prijavu\n\nBroj neuspelih pokusaja prijave je ogranicen na 5 u 15 minuta.",
+        "security": [],
+        "responses": {
+          "200": { "description": "Uspesna operacija" },
+          "302": { "description": "Preusmerenje posle prijave ili odjave" }
+        }
+      }
+    },
+    "/users": {
+      "get": {
+        "tags": ["Users"],
+        "summary": "Spisak naloga",
+        "description": "Dostupno samo administratoru.",
+        "parameters": [
+          {
+            "name": "role",
+            "in": "query",
+            "description": "Filtriranje po ulozi",
+            "schema": { "$ref": "#/components/schemas/Role" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Lista naloga",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": { "type": "array", "items": { "$ref": "#/components/schemas/User" } }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      },
+      "post": {
+        "tags": ["Users"],
+        "summary": "Kreiranje naloga lekara ili sestre",
+        "description": "Dostupno samo administratoru. Dozvoljene uloge su iskljucivo DOCTOR i NURSE. Za lekara su specijalizacija i broj licence obavezni.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/CreateStaffInput" }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Nalog kreiran" },
+          "400": { "$ref": "#/components/responses/ValidationError" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "409": { "$ref": "#/components/responses/Conflict" }
+        }
+      }
+    },
+    "/users/{id}": {
+      "put": {
+        "tags": ["Users"],
+        "summary": "Aktivacija ili deaktivacija naloga",
+        "description": "Nalog se nikada ne brise, jer bi se izgubila veza sa pregledima i nalazima koje je uneo. Administrator ne moze da deaktivira sam sebe, niti poslednjeg aktivnog administratora.",
+        "parameters": [{ "$ref": "#/components/parameters/PathId" }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["isActive"],
+                "properties": { "isActive": { "type": "boolean", "example": false } }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Status naloga promenjen" },
+          "400": { "description": "Pokusaj deaktivacije sopstvenog naloga" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "409": { "description": "U sistemu mora ostati bar jedan aktivan administrator" }
+        }
+      }
+    },
+    "/patients": {
+      "get": {
+        "tags": ["Patients"],
+        "summary": "Spisak pacijenata",
+        "description": "Dostupno lekaru, sestri i administratoru. Pacijent NEMA pristup - ne sme da zna ko su ostali pacijenti ustanove.",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "description": "Pretraga po imenu ili JMBG-u",
+            "schema": { "type": "string", "example": "Markovic" }
+          }
+        ],
+        "responses": {
+          "200": { "description": "Lista pacijenata" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+    "/patients/{id}": {
+      "get": {
+        "tags": ["Patients"],
+        "summary": "Kompletan karton pacijenta",
+        "description": "Vraca licne podatke, alergije, hronoloski poredane preglede sa terapijom i laboratorijske nalaze.\n\n**IDOR zastita:** pacijent moze da otvori iskljucivo sopstveni karton; tudji id vraca 403.",
+        "parameters": [{ "$ref": "#/components/parameters/PathId" }],
+        "responses": {
+          "200": {
+            "description": "Karton pacijenta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": { "data": { "$ref": "#/components/schemas/PatientChart" } }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/doctors": {
+      "get": {
+        "tags": ["Doctors"],
+        "summary": "Spisak lekara",
+        "description": "Koristi se u formi za zakazivanje. Vracaju se samo ime, specijalizacija i ordinacija - email i broj licence pacijentu nisu potrebni.",
+        "responses": {
+          "200": { "description": "Lista lekara" },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/appointments": {
+      "get": {
+        "tags": ["Appointments"],
+        "summary": "Lista termina",
+        "description": "Opseg se odredjuje na serveru prema ulozi:\n- pacijent vidi samo svoje termine,\n- lekar samo termine zakazane kod njega,\n- sestra i administrator sve termine.",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "schema": { "$ref": "#/components/schemas/AppointmentStatus" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Lista termina",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/Appointment" }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "description": "Nepoznat status termina" },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      },
+      "post": {
+        "tags": ["Appointments"],
+        "summary": "Zahtev za termin",
+        "description": "Dozvoljeno samo pacijentu. Pacijent se uzima iz sesije, a status je uvek REQUESTED - obe vrednosti se postavljaju na serveru.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/CreateAppointmentInput" }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Termin zatrazen" },
+          "400": { "$ref": "#/components/responses/ValidationError" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "409": { "description": "Termin kod izabranog lekara je vec zauzet" }
+        }
+      }
+    },
+    "/appointments/{id}": {
+      "get": {
+        "tags": ["Appointments"],
+        "summary": "Detalji termina",
+        "parameters": [{ "$ref": "#/components/parameters/PathId" }],
+        "responses": {
+          "200": { "description": "Termin" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      },
+      "put": {
+        "tags": ["Appointments"],
+        "summary": "Potvrda, otkazivanje ili pomeranje termina",
+        "description": "Sestra i lekar potvrdjuju i pomeraju termin. Pacijent sme SAMO da otkaze sopstveni termin. Vec obavljen ili otkazan termin niko ne moze da menja.",
+        "parameters": [{ "$ref": "#/components/parameters/PathId" }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "status": { "$ref": "#/components/schemas/AppointmentStatus" },
+                  "scheduledAt": { "type": "string", "format": "date-time" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Termin izmenjen" },
+          "400": { "$ref": "#/components/responses/ValidationError" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      },
+      "delete": {
+        "tags": ["Appointments"],
+        "summary": "Brisanje termina",
+        "description": "Samo administrator, i to za ciscenje pogresnih unosa. Termin iz kog je nastao pregled ne moze biti obrisan.",
+        "parameters": [{ "$ref": "#/components/parameters/PathId" }],
+        "responses": {
+          "200": { "description": "Termin obrisan" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "409": { "description": "Termin je obavljen ili je iz njega nastao pregled" }
+        }
+      }
+    },
+    "/medical-records": {
+      "get": {
+        "tags": ["MedicalRecords"],
+        "summary": "Lista pregleda",
+        "description": "Pacijentu se opseg suzava na sopstveni karton bez obzira na poslati `patientProfileId`.",
+        "parameters": [
+          {
+            "name": "patientProfileId",
+            "in": "query",
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": { "description": "Lista pregleda" },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      },
+      "post": {
+        "tags": ["MedicalRecords"],
+        "summary": "Unos pregleda u karton",
+        "description": "Dozvoljeno **iskljucivo lekaru**. Ni sestra ni administrator ne smeju da postave dijagnozu. Ako je naveden termin, on mora biti zakazan kod tog lekara i za tog pacijenta; unosom pregleda termin prelazi u status COMPLETED.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/CreateMedicalRecordInput" }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Pregled unet" },
+          "400": { "$ref": "#/components/responses/ValidationError" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "409": { "description": "Za taj termin je pregled vec unet" }
+        }
+      }
+    },
+    "/medical-records/{id}": {
+      "get": {
+        "tags": ["MedicalRecords"],
+        "summary": "Detalji pregleda sa terapijom",
+        "parameters": [{ "$ref": "#/components/parameters/PathId" }],
+        "responses": {
+          "200": { "description": "Pregled" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      },
+      "put": {
+        "tags": ["MedicalRecords"],
+        "summary": "Ispravka pregleda",
+        "description": "Sme iskljucivo lekar koji je pregled i napisao.",
+        "parameters": [{ "$ref": "#/components/parameters/PathId" }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "symptoms": { "type": "string" },
+                  "diagnosisCode": { "type": "string" },
+                  "diagnosisName": { "type": "string" },
+                  "therapyNotes": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Pregled izmenjen" },
+          "400": { "$ref": "#/components/responses/ValidationError" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/prescriptions": {
+      "post": {
+        "tags": ["Prescriptions"],
+        "summary": "Propisivanje leka",
+        "description": "Dozvoljeno lekaru, i to samo uz pregled koji je sam napisao.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/CreatePrescriptionInput" }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Lek propisan" },
+          "400": { "$ref": "#/components/responses/ValidationError" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+    "/prescriptions/{id}": {
+      "delete": {
+        "tags": ["Prescriptions"],
+        "summary": "Uklanjanje pogresno unetog leka",
+        "parameters": [{ "$ref": "#/components/parameters/PathId" }],
+        "responses": {
+          "200": { "description": "Lek uklonjen" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/lab-results": {
+      "get": {
+        "tags": ["LabResults"],
+        "summary": "Lista laboratorijskih nalaza",
+        "description": "Pacijent vidi samo svoje nalaze; osoblje sve.",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "schema": { "$ref": "#/components/schemas/LabResultStatus" }
+          }
+        ],
+        "responses": {
+          "200": { "description": "Lista nalaza" },
+          "400": { "description": "Nepoznat status nalaza" },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      },
+      "post": {
+        "tags": ["LabResults"],
+        "summary": "Narucivanje analize",
+        "description": "Dozvoljeno lekaru. Nalaz nastaje prazan, sa statusom PENDING; rezultat kasnije unosi sestra.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["patientProfileId", "testType"],
+                "properties": {
+                  "patientProfileId": { "type": "string" },
+                  "testType": { "type": "string", "example": "Kompletna krvna slika" },
+                  "testDate": { "type": "string", "format": "date-time" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Analiza narucena" },
+          "400": { "$ref": "#/components/responses/ValidationError" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+    "/lab-results/{id}": {
+      "put": {
+        "tags": ["LabResults"],
+        "summary": "Unos rezultata analize",
+        "description": "Radi ga sestra, ili lekar koji je nalaz narucio. **Administrator ne sme** - unos medicinskog rezultata nije administrativna radnja. Vec unet rezultat se ne moze menjati.",
+        "parameters": [{ "$ref": "#/components/parameters/PathId" }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["resultValue"],
+                "properties": {
+                  "resultValue": { "type": "string", "example": "11.2" },
+                  "resultUnit": { "type": "string", "example": "10^9/L" },
+                  "referenceRange": { "type": "string", "example": "4.0 - 10.0" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Rezultat unet, nalaz prelazi u status COMPLETED" },
+          "400": { "$ref": "#/components/responses/ValidationError" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "409": { "description": "Rezultat je vec unet" }
+        }
+      }
+    },
+    "/allergies": {
+      "get": {
+        "tags": ["Allergies"],
+        "summary": "Alergije pacijenta",
+        "parameters": [
+          {
+            "name": "patientProfileId",
+            "in": "query",
+            "description": "Obavezno za osoblje; za pacijenta se ignorise i uvek se vracaju njegove alergije.",
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": { "description": "Lista alergija" },
+          "400": { "description": "Nedostaje patientProfileId" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      },
+      "post": {
+        "tags": ["Allergies"],
+        "summary": "Unos alergije",
+        "description": "Unose lekar i sestra. Pacijent NE sme sam da doda svoju alergiju, jer se na osnovu tog podatka propisuje terapija.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["patientProfileId", "allergen", "severity"],
+                "properties": {
+                  "patientProfileId": { "type": "string" },
+                  "allergen": { "type": "string", "example": "Penicilin" },
+                  "severity": { "$ref": "#/components/schemas/AllergySeverity" },
+                  "notes": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Alergija evidentirana" },
+          "400": { "$ref": "#/components/responses/ValidationError" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "409": { "description": "Ta alergija je vec evidentirana" }
+        }
+      }
+    },
+    "/allergies/{id}": {
+      "delete": {
+        "tags": ["Allergies"],
+        "summary": "Uklanjanje alergije",
+        "parameters": [{ "$ref": "#/components/parameters/PathId" }],
+        "responses": {
+          "200": { "description": "Alergija uklonjena" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/stats": {
+      "get": {
+        "tags": ["Stats"],
+        "summary": "Podaci za grafikone",
+        "description": "Dostupno administratoru i lekaru, ali sa razlicitim opsegom: administrator vidi celu ustanovu, lekar iskljucivo sopstvene preglede. Opseg se odredjuje na serveru i vraca se u polju `scope`.",
+        "responses": {
+          "200": {
+            "description": "Agregirani podaci",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": { "data": { "$ref": "#/components/schemas/Stats" } }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+    "/external/icd10": {
+      "get": {
+        "tags": ["External"],
+        "summary": "Pretraga ICD-10 sifara dijagnoza",
+        "description": "Proxy ka besplatnom servisu National Library of Medicine. Dostupno samo lekaru. Za pojam kraci od 2 karaktera vraca praznu listu bez poziva eksternog servisa.",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string", "example": "cough" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Predlozi dijagnoza",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "code": { "type": "string", "example": "R05.3" },
+                          "name": { "type": "string", "example": "Chronic cough" }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+    "/external/drug-info": {
+      "get": {
+        "tags": ["External"],
+        "summary": "Informacije o leku (openFDA)",
+        "description": "Proxy ka openFDA bazi americke Uprave za hranu i lekove. Dostupno samo lekaru.\n\nAko lek nije pronadjen, vraca se **200 sa `data: null`**, a ne greska - mnogi lekovi sa naseg trzista nisu registrovani u SAD (npr. paracetamol se tamo zove acetaminophen). Izostanak podatka ne sme da blokira propisivanje terapije.",
+        "parameters": [
+          {
+            "name": "name",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string", "example": "amoxicillin" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Podaci o leku ili null",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "brandName": { "type": "string", "nullable": true },
+                        "genericName": { "type": "string", "nullable": true },
+                        "indications": { "type": "string", "nullable": true },
+                        "warnings": { "type": "string", "nullable": true },
+                        "dosage": { "type": "string", "nullable": true }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "sessionCookie": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "next-auth.session-token",
+        "description": "httpOnly kolacic koji NextAuth postavlja pri prijavi. Browser ga salje automatski; JavaScript ne moze da ga procita, sto stiti sesiju od kradje XSS napadom."
+      }
+    },
+    "parameters": {
+      "PathId": {
+        "name": "id",
+        "in": "path",
+        "required": true,
+        "description": "Identifikator zapisa (cuid)",
+        "schema": { "type": "string", "example": "cmtejznf6000dm03eq85hotm8" }
+      }
+    },
+    "responses": {
+      "Unauthorized": {
+        "description": "Korisnik nije prijavljen",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/Error" },
+            "example": { "error": "Niste prijavljeni" }
+          }
+        }
+      },
+      "Forbidden": {
+        "description": "Korisnik je prijavljen, ali nema ovlascenje (provera uloge ili IDOR provera)",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/Error" },
+            "example": { "error": "Nemate ovlascenje za ovu akciju" }
+          }
+        }
+      },
+      "NotFound": {
+        "description": "Trazeni zapis ne postoji",
+        "content": {
+          "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+        }
+      },
+      "Conflict": {
+        "description": "Sukob sa postojecim podacima",
+        "content": {
+          "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+        }
+      },
+      "TooManyRequests": {
+        "description": "Previse pokusaja u kratkom roku (rate limiting)",
+        "content": {
+          "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+        }
+      },
+      "ValidationError": {
+        "description": "Podaci nisu prosli Zod validaciju",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/ValidationError" },
+            "example": {
+              "error": "Podaci nisu ispravni",
+              "fields": {
+                "jmbg": "JMBG mora imati tacno 13 cifara",
+                "password": "Lozinka mora imati najmanje 8 karaktera"
+              }
+            }
+          }
+        }
+      }
+    },
+    "schemas": {
+      "Error": {
+        "type": "object",
+        "properties": { "error": { "type": "string" } }
+      },
+      "ValidationError": {
+        "type": "object",
+        "properties": {
+          "error": { "type": "string", "example": "Podaci nisu ispravni" },
+          "fields": {
+            "type": "object",
+            "additionalProperties": { "type": "string" },
+            "description": "Mapa 'naziv polja -> poruka', da forma prikaze gresku ispod odgovarajuceg polja"
+          }
+        }
+      },
+      "Role": {
+        "type": "string",
+        "enum": ["ADMIN", "DOCTOR", "NURSE", "PATIENT"]
+      },
+      "AppointmentStatus": {
+        "type": "string",
+        "enum": ["REQUESTED", "CONFIRMED", "COMPLETED", "CANCELLED"],
+        "description": "REQUESTED - pacijent zatrazio; CONFIRMED - osoblje potvrdilo; COMPLETED - pregled obavljen; CANCELLED - otkazan"
+      },
+      "LabResultStatus": {
+        "type": "string",
+        "enum": ["PENDING", "COMPLETED"]
+      },
+      "AllergySeverity": {
+        "type": "string",
+        "enum": ["MILD", "MODERATE", "SEVERE"]
+      },
+      "User": {
+        "type": "object",
+        "description": "Polje passwordHash se NIKADA ne vraca kroz API.",
+        "properties": {
+          "id": { "type": "string" },
+          "email": { "type": "string", "format": "email" },
+          "fullName": { "type": "string" },
+          "role": { "$ref": "#/components/schemas/Role" },
+          "phone": { "type": "string", "nullable": true },
+          "isActive": { "type": "boolean" }
+        }
+      },
+      "RegisterInput": {
+        "type": "object",
+        "required": ["email", "password", "fullName", "jmbg", "dateOfBirth"],
+        "properties": {
+          "email": { "type": "string", "format": "email", "example": "pacijent@primer.rs" },
+          "password": { "type": "string", "minLength": 8, "example": "lozinka123" },
+          "fullName": { "type": "string", "example": "Petar Petrovic" },
+          "jmbg": { "type": "string", "pattern": "^\\d{13}$", "example": "0101990710015" },
+          "dateOfBirth": { "type": "string", "format": "date", "example": "1990-01-01" },
+          "phone": { "type": "string", "example": "063/777-8888" },
+          "address": { "type": "string", "example": "Nemanjina 4, Beograd" }
+        }
+      },
+      "CreateStaffInput": {
+        "type": "object",
+        "required": ["email", "password", "fullName", "role"],
+        "properties": {
+          "email": { "type": "string", "format": "email" },
+          "password": { "type": "string", "minLength": 8 },
+          "fullName": { "type": "string" },
+          "role": { "type": "string", "enum": ["DOCTOR", "NURSE"] },
+          "phone": { "type": "string" },
+          "specialization": { "type": "string", "example": "Kardiologija" },
+          "licenseNumber": { "type": "string", "example": "LEK-1003" },
+          "officeRoom": { "type": "string", "example": "12" }
+        }
+      },
+      "CreateAppointmentInput": {
+        "type": "object",
+        "required": ["doctorId", "scheduledAt", "reasonForVisit"],
+        "properties": {
+          "doctorId": { "type": "string" },
+          "scheduledAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Ne sme biti u proslosti"
+          },
+          "reasonForVisit": { "type": "string", "minLength": 5, "maxLength": 500 }
+        }
+      },
+      "Appointment": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "scheduledAt": { "type": "string", "format": "date-time" },
+          "reasonForVisit": { "type": "string" },
+          "status": { "$ref": "#/components/schemas/AppointmentStatus" },
+          "patient": { "type": "object" },
+          "doctor": { "type": "object" }
+        }
+      },
+      "CreateMedicalRecordInput": {
+        "type": "object",
+        "required": ["patientProfileId", "symptoms", "diagnosisName"],
+        "properties": {
+          "patientProfileId": { "type": "string" },
+          "appointmentId": {
+            "type": "string",
+            "description": "Opciono - pregled moze nastati i bez zakazanog termina (hitan slucaj)"
+          },
+          "visitDate": { "type": "string", "format": "date-time" },
+          "symptoms": { "type": "string", "minLength": 5 },
+          "diagnosisCode": {
+            "type": "string",
+            "description": "ICD-10 sifra iz eksternog servisa",
+            "example": "J06.9"
+          },
+          "diagnosisName": { "type": "string", "minLength": 3 },
+          "therapyNotes": { "type": "string" }
+        }
+      },
+      "CreatePrescriptionInput": {
+        "type": "object",
+        "required": ["medicalRecordId", "medicationName", "dosage", "frequency", "durationDays"],
+        "properties": {
+          "medicalRecordId": { "type": "string" },
+          "medicationName": { "type": "string", "example": "Amoksicilin" },
+          "dosage": { "type": "string", "example": "875 mg" },
+          "frequency": { "type": "string", "example": "dva puta dnevno" },
+          "durationDays": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 365,
+            "description": "Ceo pozitivan broj dana"
+          },
+          "notes": { "type": "string" }
+        }
+      },
+      "PatientChart": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "jmbg": { "type": "string" },
+          "dateOfBirth": { "type": "string", "format": "date-time" },
+          "bloodType": { "type": "string", "nullable": true },
+          "user": { "type": "object" },
+          "allergies": { "type": "array", "items": { "type": "object" } },
+          "medicalRecords": { "type": "array", "items": { "type": "object" } },
+          "labResults": { "type": "array", "items": { "type": "object" } }
+        }
+      },
+      "Stats": {
+        "type": "object",
+        "properties": {
+          "scope": { "type": "string", "enum": ["ALL", "DOCTOR"] },
+          "totals": {
+            "type": "object",
+            "properties": {
+              "records": { "type": "integer" },
+              "prescriptions": { "type": "integer" }
+            }
+          },
+          "visitsPerMonth": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "label": { "type": "string", "example": "Avg 2026" },
+                "count": { "type": "integer" }
+              }
+            }
+          },
+          "topDiagnoses": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": { "type": "string" },
+                "count": { "type": "integer" }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "security": [{ "sessionCookie": [] }]
+}
