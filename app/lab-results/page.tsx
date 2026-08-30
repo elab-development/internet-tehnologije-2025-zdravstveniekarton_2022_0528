@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import { Role, LabResultStatus } from '@prisma/client';
@@ -42,9 +43,11 @@ const emptyResultForm = { resultValue: '', resultUnit: '', referenceRange: '' };
 export default function LabResultsPage() {
   const { data: session } = useSession();
   const role = session?.user?.role;
+  const searchParams = useSearchParams();
 
   const [results, setResults] = useState<LabResult[]>([]);
-  const [statusFilter, setStatusFilter] = useState('');
+  // Pocetni filter se cita iz adrese (/lab-results?status=PENDING sa dashboard-a).
+  const [statusFilter, setStatusFilter] = useState(searchParams.get('status') ?? '');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
 

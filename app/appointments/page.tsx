@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import { Role, AppointmentStatus } from '@prisma/client';
@@ -28,9 +29,12 @@ const STATUS_FILTER_OPTIONS = [
 export default function AppointmentsPage() {
   const { data: session } = useSession();
   const role = session?.user?.role;
+  const searchParams = useSearchParams();
 
   const [appointments, setAppointments] = useState<Appointment[]>([]);
-  const [statusFilter, setStatusFilter] = useState('');
+  // Pocetni filter se cita iz adrese, da veze sa dashboard-a
+  // (npr. /appointments?status=REQUESTED) odmah otvore pravi spisak.
+  const [statusFilter, setStatusFilter] = useState(searchParams.get('status') ?? '');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
 
