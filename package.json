@@ -17,7 +17,7 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
-    "lock:fix": "docker run --rm -v \"$PWD\":/app -w /app node:20-alpine npm install --package-lock-only --no-audit --no-fund"
+    "lock:fix": "node scripts/fix-lock.js"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",

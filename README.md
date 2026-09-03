@@ -207,18 +207,40 @@ Dostupni nakon `npm run db:seed`. Lozinka za sve naloge je **`lozinka123`**.
 | `npm run format:check`              | provera formatiranja (koristi je CI)            |
 | `npm run db:up` / `npm run db:down` | pokretanje i gašenje baze u Dockeru             |
 | `npm run db:seed`                   | punjenje baze demo podacima                     |
+| `npm run lock:fix`                  | dopuna `package-lock.json` za sve platforme     |
 
-> **Napomena za instalaciju novih paketa (Windows):** `npm install` na Windows-u u
-> `package-lock.json` upisuje samo Windows varijante opcionih paketa, pa `npm ci` na Linux-u
-> (GitHub Actions, Docker) puca uz poruku `Missing: ... from lock file`. Posle svakog dodavanja
-> paketa pokrenuti:
->
-> ```bash
-> npm run lock:fix
-> ```
->
-> Ta komanda regeneriše lock fajl unutar Linux kontejnera, pa on sadrži varijante za sve
-> platforme i radi svuda.
+### Instalacija novih paketa (obavezno pročitati)
+
+Neki paketi imaju opcione zavisnosti koje se razlikuju po operativnom sistemu — na primer,
+`esbuild` ima poseban binarni fajl za Windows, a poseban za Linux. U `package-lock.json`
+moraju da stoje **svi**, jer se projekat razvija na Windows-u, a gradi u Linux kontejneru
+(Docker) i na CI serveru.
+
+`npm install` upisuje uglavnom ono što važi za mašinu na kojoj je pokrenut. Zato lock nastao
+na Windows-u ostane bez Linux paketa i `npm ci` u Docker-u pukne porukom:
+
+```
+npm error `npm ci` can only install packages when your package.json and
+npm error package-lock.json are in sync.
+npm error Missing: @emnapi/core@1.11.3 from lock file
+```
+
+Lock napravljen samo u Linux kontejneru ima obrnut problem — ostane bez Windows paketa, pa
+onda lokalno pokretanje pukne na isti način.
+
+Zato važe dva pravila:
+
+1. **Posle svakog `npm install` ili `npm uninstall`** pokrenuti (potreban je pokrenut Docker):
+
+   ```bash
+   npm run lock:fix
+   ```
+
+   Komanda dopunjuje postojeći lock u Linux kontejneru, novijim npm-om koji ne briše unose za
+   druge platforme — pa se dobija unija Windows i Linux paketa.
+
+2. **Za instalaciju paketa iz postojećeg lock fajla koristiti `npm ci`, a ne `npm install`.**
+   `npm ci` ne menja lock, pa ga ne može ni pokvariti.
 
 ---
 
