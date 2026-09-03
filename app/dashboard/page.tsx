@@ -170,7 +170,10 @@ async function DoctorDashboard({ userId }: { userId: string }) {
           id: true,
           scheduledAt: true,
           reasonForVisit: true,
-          patient: { select: { fullName: true } },
+          // Karton je potreban da bi termin bio veza ka unosu pregleda.
+          patient: {
+            select: { fullName: true, patientProfile: { select: { id: true } } },
+          },
         },
         orderBy: { scheduledAt: 'asc' },
         take: 5,
@@ -204,10 +207,27 @@ async function DoctorDashboard({ userId }: { userId: string }) {
           <ul className="divide-y divide-slate-100 text-sm">
             {nextAppointments.map((appointment) => (
               <li key={appointment.id} className="py-2">
-                <p className="font-medium text-slate-800">
-                  {formatDateTime(appointment.scheduledAt)} - {appointment.patient.fullName}
-                </p>
-                <p className="text-slate-600">{appointment.reasonForVisit}</p>
+                {appointment.patient.patientProfile ? (
+                  // Klik na termin vodi pravo na unos pregleda za tog pacijenta,
+                  // sa vec izabranim terminom - lekar ne mora da trazi pacijenta.
+                  <Link
+                    href={`/medical-records/create?patientProfileId=${appointment.patient.patientProfile.id}&appointmentId=${appointment.id}`}
+                    className="block rounded-md px-2 py-1 hover:bg-primary-50"
+                  >
+                    <p className="font-medium text-primary-800">
+                      {formatDateTime(appointment.scheduledAt)} - {appointment.patient.fullName}
+                    </p>
+                    <p className="text-slate-600">{appointment.reasonForVisit}</p>
+                    <p className="mt-0.5 text-xs text-primary-700">Unesi pregled &rarr;</p>
+                  </Link>
+                ) : (
+                  <>
+                    <p className="font-medium text-slate-800">
+                      {formatDateTime(appointment.scheduledAt)} - {appointment.patient.fullName}
+                    </p>
+                    <p className="text-slate-600">{appointment.reasonForVisit}</p>
+                  </>
+                )}
               </li>
             ))}
           </ul>

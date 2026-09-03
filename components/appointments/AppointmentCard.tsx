@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { Role, AppointmentStatus } from '@prisma/client';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
@@ -11,7 +12,12 @@ export type Appointment = {
   scheduledAt: string;
   reasonForVisit: string;
   status: AppointmentStatus;
-  patient: { id: string; fullName: string; email: string };
+  patient: {
+    id: string;
+    fullName: string;
+    email: string;
+    patientProfile: { id: string } | null;
+  };
   doctor: {
     id: string;
     fullName: string;
@@ -54,6 +60,13 @@ export default function AppointmentCard({
   // Otkazati moze i pacijent (svoj termin) i osoblje, dok je termin jos aktivan.
   const canCancel = isOpen;
 
+  // Lekar sa potvrdjenog termina prelazi pravo na unos pregleda. Bez ove veze
+  // morao bi da trazi pacijenta kroz spisak, iako vec gleda njegov termin.
+  const canOpenRecordForm =
+    viewerRole === Role.DOCTOR &&
+    appointment.status === AppointmentStatus.CONFIRMED &&
+    appointment.patient.patientProfile !== null;
+
   return (
     <Card
       title={formatDateTime(appointment.scheduledAt)}
@@ -79,8 +92,16 @@ export default function AppointmentCard({
         </p>
       )}
 
-      {(canConfirm || canCancel) && (
-        <div className="mt-4 flex gap-2">
+      {(canConfirm || canCancel || canOpenRecordForm) && (
+        <div className="mt-4 flex flex-wrap gap-2">
+          {canOpenRecordForm && (
+            <Link
+              href={`/medical-records/create?patientProfileId=${appointment.patient.patientProfile?.id}&appointmentId=${appointment.id}`}
+              className="rounded-md bg-primary-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-primary-800"
+            >
+              Unesi pregled
+            </Link>
+          )}
           {canConfirm && (
             <Button size="sm" disabled={isBusy} onClick={() => onConfirm(appointment.id)}>
               Potvrdi termin

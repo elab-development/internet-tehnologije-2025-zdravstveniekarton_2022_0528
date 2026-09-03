@@ -8,6 +8,8 @@ import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import MedicalRecordCard, { type MedicalRecord } from '@/components/medical/MedicalRecordCard';
 import PrescriptionForm from '@/components/medical/PrescriptionForm';
+import LabOrderForm from '@/components/medical/LabOrderForm';
+import EditRecordForm from '@/components/medical/EditRecordForm';
 
 type RecordDetails = MedicalRecord & {
   patientProfile: { id: string; user: { id: string; fullName: string } };
@@ -86,7 +88,22 @@ export default function MedicalRecordPage({ params }: { params: { id: string } }
         >
           &larr; Karton pacijenta {record.patientProfile.user.fullName}
         </Link>
-        <h1 className="mt-2 text-2xl font-bold text-primary-800">Detalji pregleda</h1>
+        <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
+          <h1 className="text-2xl font-bold text-primary-800">Detalji pregleda</h1>
+          {/* Ispravku pregleda sme samo lekar koji ga je i napisao. */}
+          {canPrescribe && (
+            <EditRecordForm
+              recordId={record.id}
+              initial={{
+                symptoms: record.symptoms,
+                diagnosisName: record.diagnosisName,
+                diagnosisCode: record.diagnosisCode,
+                therapyNotes: record.therapyNotes,
+              }}
+              onSaved={loadRecord}
+            />
+          )}
+        </div>
       </div>
 
       <div className="mb-6">
@@ -115,6 +132,18 @@ export default function MedicalRecordPage({ params }: { params: { id: string } }
               </ul>
             </Card>
           )}
+
+          <Card
+            title="Narucivanje analize"
+            subtitle="Analiza se vezuje za ovaj pregled; rezultat kasnije unosi sestra."
+            className="mb-6"
+          >
+            <LabOrderForm
+              medicalRecordId={record.id}
+              patientProfileId={record.patientProfile.id}
+              onCreated={loadRecord}
+            />
+          </Card>
 
           <Card
             title="Propisivanje leka"

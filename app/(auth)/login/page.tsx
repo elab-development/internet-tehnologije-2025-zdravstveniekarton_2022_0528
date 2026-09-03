@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { Suspense, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { signIn } from 'next-auth/react';
 import Link from 'next/link';
 import Input from '@/components/ui/Input';
@@ -14,8 +14,9 @@ import Button from '@/components/ui/Button';
  *  - useState  -> cuva unete podatke, poruku o gresci i stanje slanja
  *  - useRouter -> preusmerava korisnika posle uspesne prijave
  */
-export default function LoginPage() {
+function LoginPageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -42,7 +43,10 @@ export default function LoginPage() {
       return;
     }
 
-    router.push('/');
+    // Ako je korisnik dosao sa zasticene stranice, vraca se na nju; inace ide
+    // na kontrolnu tablu. Pocetna stranica poziva na prijavu, pa prijavljenom
+    // korisniku vise nema svrhu.
+    router.push(searchParams.get('callbackUrl') ?? '/dashboard');
     router.refresh(); // osvezava serverske komponente da odmah vide novu sesiju
   }
 
@@ -93,5 +97,23 @@ export default function LoginPage() {
         </p>
       </div>
     </main>
+  );
+}
+
+/**
+ * useSearchParams() cita parametre iz adrese, sto je moguce tek u browseru,
+ * pa Next.js trazi da takva komponenta bude unutar <Suspense> granice.
+ */
+export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="page-container">
+          <p className="text-sm text-slate-500">Ucitavanje...</p>
+        </main>
+      }
+    >
+      <LoginPageContent />
+    </Suspense>
   );
 }

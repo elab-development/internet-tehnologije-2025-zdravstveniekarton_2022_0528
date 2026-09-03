@@ -13,7 +13,16 @@ const appointmentSelect = {
   reasonForVisit: true,
   status: true,
   createdAt: true,
-  patient: { select: { id: true, fullName: true, email: true } },
+  patient: {
+    select: {
+      id: true,
+      fullName: true,
+      email: true,
+      // Karton pacijenta je potreban da bi se sa termina moglo preci
+      // pravo na unos pregleda, koji se vezuje za karton, a ne za nalog.
+      patientProfile: { select: { id: true } },
+    },
+  },
   doctor: {
     select: {
       id: true,

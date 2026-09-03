@@ -39,6 +39,20 @@ const recordSelect = {
       notes: true,
     },
   },
+  // Nalazi naruceni tokom ovog pregleda - prikazuju se uz njega, da bi
+  // pregled bio celina: dijagnoza, terapija i trazene analize.
+  labResults: {
+    select: {
+      id: true,
+      testType: true,
+      resultValue: true,
+      resultUnit: true,
+      referenceRange: true,
+      status: true,
+      testDate: true,
+    },
+    orderBy: { testDate: 'desc' as const },
+  },
 };
 
 /**

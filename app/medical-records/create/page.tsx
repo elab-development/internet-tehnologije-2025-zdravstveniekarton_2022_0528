@@ -44,7 +44,8 @@ function CreateMedicalRecordPageContent() {
   const [patientProfileId, setPatientProfileId] = useState(
     searchParams.get('patientProfileId') ?? '',
   );
-  const [appointmentId, setAppointmentId] = useState('');
+  // Kada se do forme dolazi sa termina, i pacijent i termin su vec izabrani.
+  const [appointmentId, setAppointmentId] = useState(searchParams.get('appointmentId') ?? '');
   const [symptoms, setSymptoms] = useState('');
   const [diagnosisName, setDiagnosisName] = useState('');
   const [diagnosisCode, setDiagnosisCode] = useState<string | undefined>();
@@ -114,7 +115,9 @@ function CreateMedicalRecordPageContent() {
       return;
     }
 
-    router.push(`/patients/${patientProfileId}`);
+    // Posle unosa pregleda lekar najcesce odmah propisuje terapiju, pa se ide
+    // pravo na stranicu tog pregleda umesto nazad na karton.
+    router.push(`/medical-records/${payload.data.id}`);
     router.refresh();
   }
 
@@ -141,7 +144,7 @@ function CreateMedicalRecordPageContent() {
             required
           />
 
-          {appointmentOptions.length > 0 && (
+          {(appointmentOptions.length > 0 || appointmentId) && (
             <Select
               label="Termin (opciono)"
               name="appointmentId"

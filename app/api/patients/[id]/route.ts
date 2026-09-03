@@ -68,6 +68,18 @@ export async function GET(_request: NextRequest, { params }: RouteContext) {
               notes: true,
             },
           },
+          labResults: {
+            select: {
+              id: true,
+              testType: true,
+              resultValue: true,
+              resultUnit: true,
+              referenceRange: true,
+              status: true,
+              testDate: true,
+            },
+            orderBy: { testDate: 'desc' },
+          },
         },
         orderBy: { visitDate: 'desc' }, // najnoviji pregled na vrhu kartona
       },

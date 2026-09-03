@@ -67,7 +67,9 @@ export default function RegisterPage() {
       redirect: false,
     });
 
-    router.push('/');
+    // Novi pacijent odmah vidi svoj (jos prazan) karton, umesto pocetne
+    // stranice koja ga poziva da se registruje.
+    router.push('/dashboard');
     router.refresh();
   }
 

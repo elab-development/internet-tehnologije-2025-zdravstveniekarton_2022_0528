@@ -196,6 +196,8 @@ export type UpdateMedicalRecordInput = z.infer<typeof updateMedicalRecordSchema>
  */
 export const createLabResultSchema = z.object({
   patientProfileId: z.string().min(1, 'Izaberite pacijenta'),
+  // Opciono: analiza narucena tokom pregleda vezuje se za taj pregled.
+  medicalRecordId: z.string().optional(),
   testType: sanitizedText(
     3,
     200,
@@ -275,3 +277,58 @@ export type CreateStaffInput = z.infer<typeof createStaffSchema>;
 export const updateUserStatusSchema = z.object({
   isActive: z.boolean({ invalid_type_error: 'Vrednost mora biti tacno ili netacno' }),
 });
+
+/**
+ * Izmena sopstvenog profila.
+ *
+ * Ovde su NAMERNO izostavljena polja koja korisnik ne sme sam da menja:
+ * email (identitet za prijavu), uloga, JMBG, broj licence i specijalizacija.
+ * Njih menja administrator, jer su administrativni podaci ustanove.
+ *
+ * Polja pacijenta i lekara su opciona, pa ista sema pokriva sve cetiri uloge -
+ * ruta prihvata samo ona polja koja odgovaraju ulozi pozivaoca.
+ */
+export const updateProfileSchema = z.object({
+  fullName: sanitizedText(
+    3,
+    100,
+    'Ime i prezime moraju imati najmanje 3 karaktera',
+    'Ime i prezime su predugacki',
+  ),
+  phone: optionalSanitizedText(30, 'Broj telefona je predugacak'),
+
+  // Podaci pacijenta
+  address: optionalSanitizedText(200, 'Adresa je predugacka'),
+  bloodType: optionalSanitizedText(5, 'Krvna grupa je predugacka'),
+  insuranceNumber: optionalSanitizedText(50, 'Broj osiguranja je predugacak'),
+  emergencyContactName: optionalSanitizedText(100, 'Ime kontakta je predugacko'),
+  emergencyContactPhone: optionalSanitizedText(30, 'Telefon kontakta je predugacak'),
+
+  // Podatak lekara
+  officeRoom: optionalSanitizedText(20, 'Oznaka ordinacije je predugacka'),
+});
+
+export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;
+
+/**
+ * Promena sopstvene lozinke.
+ *
+ * Trazi se i trenutna lozinka: bez toga bi neko ko dodje do otkljucanog
+ * racunara mogao da promeni lozinku i trajno preuzme nalog.
+ */
+export const changePasswordSchema = z
+  .object({
+    currentPassword: z.string().min(1, 'Unesite trenutnu lozinku'),
+    newPassword: passwordSchema,
+    confirmPassword: z.string().min(1, 'Potvrdite novu lozinku'),
+  })
+  .refine((data) => data.newPassword === data.confirmPassword, {
+    message: 'Lozinke se ne poklapaju',
+    path: ['confirmPassword'],
+  })
+  .refine((data) => data.newPassword !== data.currentPassword, {
+    message: 'Nova lozinka mora biti razlicita od trenutne',
+    path: ['newPassword'],
+  });
+
+export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;

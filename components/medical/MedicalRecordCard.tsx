@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { LabResultStatus } from '@prisma/client';
 import Card from '@/components/ui/Card';
 import { formatDate } from '@/lib/format';
 
@@ -9,6 +10,16 @@ export type Prescription = {
   frequency: string;
   durationDays: number;
   notes: string | null;
+};
+
+export type RecordLabResult = {
+  id: string;
+  testType: string;
+  resultValue: string | null;
+  resultUnit: string | null;
+  referenceRange: string | null;
+  status: LabResultStatus;
+  testDate: string;
 };
 
 export type MedicalRecord = {
@@ -24,6 +35,8 @@ export type MedicalRecord = {
     doctorProfile: { specialization: string } | null;
   };
   prescriptions: Prescription[];
+  /** Nalazi naruceni tokom ovog pregleda; stariji pregledi ih mogu nemati. */
+  labResults?: RecordLabResult[];
 };
 
 /**
@@ -66,6 +79,33 @@ export default function MedicalRecordCard({
           <div>
             <dt className="font-medium text-slate-500">Terapija i napomene</dt>
             <dd className="mt-0.5 whitespace-pre-line text-slate-800">{record.therapyNotes}</dd>
+          </div>
+        )}
+
+        {record.labResults && record.labResults.length > 0 && (
+          <div>
+            <dt className="font-medium text-slate-500">Narucene analize</dt>
+            <dd className="mt-1">
+              <ul className="divide-y divide-slate-100 rounded-md border border-slate-200">
+                {record.labResults.map((lab) => (
+                  <li key={lab.id} className="flex flex-wrap justify-between gap-2 px-3 py-2">
+                    <span className="font-medium text-slate-800">{lab.testType}</span>
+                    {lab.status === LabResultStatus.COMPLETED ? (
+                      <span className="text-slate-700">
+                        {lab.resultValue} {lab.resultUnit}
+                        {lab.referenceRange && (
+                          <span className="text-slate-500"> (ref. {lab.referenceRange})</span>
+                        )}
+                      </span>
+                    ) : (
+                      <span className="rounded-full bg-warning-100 px-2 py-0.5 text-xs font-medium text-warning-700">
+                        Ceka rezultat
+                      </span>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </dd>
           </div>
         )}
 

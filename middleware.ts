@@ -1,4 +1,5 @@
 import { withAuth, type NextRequestWithAuth } from 'next-auth/middleware';
+import { getToken } from 'next-auth/jwt';
 import { NextResponse, type NextRequest, type NextFetchEvent } from 'next/server';
 import { getRequiredRoles } from '@/lib/permissions';
 import { isValidOrigin } from '@/lib/security/csrf';
@@ -11,6 +12,9 @@ import { isValidOrigin } from '@/lib/security/csrf';
  *     stigli sa nase stranice (lib/security/csrf.ts).
  *  2. RBAC - za zasticene stranice proverava se da li uloga korisnika sme
  *     na tu putanju (lib/permissions.ts).
+ *  3. Stranice koje imaju smisla samo za NEPRIJAVLJENOG korisnika (pocetna sa
+ *     predstavljanjem sistema, prijava i registracija) preusmeravaju vec
+ *     prijavljenog korisnika na njegovu kontrolnu tablu.
  *
  * Fina provera "da li je BAS OVAJ zapis tvoj" (IDOR) radi se u API rutama,
  * jer middleware nema pristup bazi.
@@ -48,8 +52,24 @@ const pageMiddleware = withAuth(
   },
 );
 
-export default function middleware(request: NextRequest, event: NextFetchEvent) {
+/**
+ * Stranice namenjene iskljucivo neprijavljenom posetiocu. Prijavljenom
+ * korisniku one nemaju svrhu - pocetna ga poziva da se prijavi, a on to vec
+ * jeste - pa se preusmerava na kontrolnu tablu.
+ */
+const PUBLIC_ONLY_ROUTES = ['/', '/login', '/register'];
+
+export default async function middleware(request: NextRequest, event: NextFetchEvent) {
   const { pathname } = request.nextUrl;
+
+  if (PUBLIC_ONLY_ROUTES.includes(pathname)) {
+    // getToken cita istu sesiju kao i ostatak aplikacije, bez upita ka bazi.
+    const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
+    if (token) {
+      return NextResponse.redirect(new URL('/dashboard', request.url));
+    }
+    return NextResponse.next();
+  }
 
   if (pathname.startsWith('/api/')) {
     // NextAuth-ove rute imaju sopstveni CSRF token, pa ih preskacemo.
@@ -68,11 +88,15 @@ export default function middleware(request: NextRequest, event: NextFetchEvent) 
 
 /**
  * Matcher govori na kojim putanjama se middleware pokrece.
- * Pocetna, /login i /register moraju ostati javne, inace bi se korisnik
- * vrteo u krug pri prijavi.
+ *
+ * Pocetna, /login i /register su ovde zbog preusmeravanja vec prijavljenog
+ * korisnika; za neprijavljenog ostaju potpuno javne.
  */
 export const config = {
   matcher: [
+    '/',
+    '/login',
+    '/register',
     '/api/:path*',
     '/dashboard/:path*',
     '/profile/:path*',

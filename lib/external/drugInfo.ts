@@ -44,11 +44,30 @@ function firstParagraph(values: string[] | undefined, maxLength = 400): string |
  * Vraca null ako lek nije pronadjen ili ako servis nije dostupan.
  */
 export async function getDrugInfo(name: string): Promise<DrugInfo | null> {
-  // Navodnici oko pojma znace tacan izraz, a razmak izmedju uslova znaci ILI.
-  // Trazi se po zastitnom imenu, generickom nazivu i nazivu supstance, jer se
-  // isti lek u bazi pojavljuje pod razlicitim imenima.
-  const escaped = name.replace(/"/g, '');
-  const query = `(openfda.brand_name:"${escaped}"+openfda.generic_name:"${escaped}"+openfda.substance_name:"${escaped}")`;
+  // Iz unosa se zadrzavaju samo slova, cifre, razmaci i crtice. Znaci poput
+  // navodnika, zagrada i dvotacke imaju posebno znacenje u upitu i obaraju ga,
+  // pa se uklanjaju pre nego sto se upit uopste sastavi.
+  const words = name
+    .replace(/[^\p{L}\p{N}\s-]/gu, ' ')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+
+  if (words.length === 0) return null;
+
+  // Reci se spajaju sa AND, pa "amoxicillin clavulanate" trazi lek koji sadrzi
+  // oba pojma. Pojam se NE stavlja pod navodnike: navodnici u openFDA znace
+  // poklapanje celog polja, pa "tylenol" ne bi naslo lek ciji je zvanicni
+  // naziv "TYLENOL Extra Strength".
+  const terms = words.join(' AND ');
+
+  // Isti lek se u bazi pojavljuje pod zastitnim imenom, generickim nazivom i
+  // nazivom supstance, pa se pretrazuju sva tri polja povezana sa OR.
+  const query =
+    `(openfda.brand_name:(${terms})` +
+    ` OR openfda.generic_name:(${terms})` +
+    ` OR openfda.substance_name:(${terms}))`;
+
   const url = `${OPENFDA_URL}?search=${encodeURIComponent(query)}&limit=1`;
 
   try {

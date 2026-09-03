@@ -2,7 +2,7 @@
 // Iz nje se generise tipizovan klijent (prisma generate) i migracije (prisma migrate).
 
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
   // "native" je engine za masinu na kojoj se razvija (Windows/macOS), a
   // "linux-musl-openssl-3.0.x" je engine za Alpine Linux u Docker kontejneru.
   // Bez ovog drugog, Prisma u kontejneru ne moze da ucita svoj engine.
@@ -148,6 +148,9 @@ model MedicalRecord {
   patientProfile PatientProfile @relation(fields: [patientProfileId], references: [id])
   doctor         User           @relation("DoctorRecords", fields: [doctorId], references: [id])
   prescriptions  Prescription[]
+  // Nalazi naruceni tokom ovog pregleda. Pregled tako postaje celina:
+  // dijagnoza, propisana terapija i trazene analize na jednom mestu.
+  labResults     LabResult[]
 
   // Karton pacijenta se uvek ucitava po pacijentu i redja po datumu pregleda.
   @@index([patientProfileId, visitDate])
@@ -171,6 +174,9 @@ model Prescription {
 model LabResult {
   id                  String          @id @default(cuid())
   patientProfileId    String
+  // Pregled iz kog je analiza narucena. Opciono je, jer se analiza sme naruciti
+  // i nezavisno od pregleda (sistematski pregled, analiza pre dolaska lekaru).
+  medicalRecordId     String?
   requestedByDoctorId String
   uploadedByNurseId   String?
   testType            String
@@ -182,6 +188,7 @@ model LabResult {
   createdAt           DateTime        @default(now())
 
   patientProfile    PatientProfile @relation(fields: [patientProfileId], references: [id])
+  medicalRecord     MedicalRecord? @relation(fields: [medicalRecordId], references: [id])
   requestedByDoctor User           @relation("DoctorLabRequests", fields: [requestedByDoctorId], references: [id])
   uploadedByNurse   User?          @relation("NurseUploads", fields: [uploadedByNurseId], references: [id])
 }

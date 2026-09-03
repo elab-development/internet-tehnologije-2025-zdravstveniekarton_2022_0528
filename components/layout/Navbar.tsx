@@ -67,7 +67,10 @@ export default function Navbar() {
   return (
     <header className="border-b border-slate-200 bg-white">
       <nav className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4">
-        <Link href="/" className="shrink-0 text-lg font-bold text-primary-800">
+        <Link
+          href={session?.user ? '/dashboard' : '/'}
+          className="shrink-0 text-lg font-bold text-primary-800"
+        >
           e-Karton
         </Link>
 

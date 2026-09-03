@@ -4,7 +4,8 @@ import { prisma } from '@/lib/prisma';
 import { requireAuth, requireRole } from '@/lib/session';
 import { getOwnPatientProfileId } from '@/lib/security/idor';
 import { createLabResultSchema } from '@/lib/validation/schemas';
-import { jsonOk, jsonError, jsonAuthError, jsonValidationError } from '@/lib/api';
+import { canUpdateMedicalRecord } from '@/lib/security/idor';
+import { jsonOk, jsonError, jsonAuthError, jsonForbidden, jsonValidationError } from '@/lib/api';
 
 const labResultSelect = {
   id: true,
@@ -20,6 +21,8 @@ const labResultSelect = {
   },
   requestedByDoctor: { select: { id: true, fullName: true } },
   uploadedByNurse: { select: { id: true, fullName: true } },
+  // Pregled iz kog je analiza narucena, ako je narucena tokom pregleda.
+  medicalRecord: { select: { id: true, diagnosisName: true, visitDate: true } },
 };
 
 /**
@@ -79,7 +82,7 @@ export async function POST(request: NextRequest) {
   const parsed = createLabResultSchema.safeParse(body);
   if (!parsed.success) return jsonValidationError(parsed.error);
 
-  const { patientProfileId, testType, testDate } = parsed.data;
+  const { patientProfileId, medicalRecordId, testType, testDate } = parsed.data;
 
   const patientExists = await prisma.patientProfile.findUnique({
     where: { id: patientProfileId },
@@ -87,9 +90,25 @@ export async function POST(request: NextRequest) {
   });
   if (!patientExists) return jsonError('Pacijent ne postoji', 400);
 
+  // Ako se analiza narucuje tokom pregleda, pregled mora biti onaj koji je
+  // ovaj lekar i napisao, i mora pripadati bas tom pacijentu. Iste dve provere
+  // vaze i pri propisivanju leka - analiza i terapija su ravnopravni deo pregleda.
+  if (medicalRecordId) {
+    const record = await prisma.medicalRecord.findUnique({
+      where: { id: medicalRecordId },
+      select: { id: true, doctorId: true, patientProfileId: true },
+    });
+    if (!record) return jsonError('Pregled ne postoji', 400);
+    if (!canUpdateMedicalRecord(auth.user, record.doctorId)) return jsonForbidden();
+    if (record.patientProfileId !== patientProfileId) {
+      return jsonError('Pregled ne pripada izabranom pacijentu', 400);
+    }
+  }
+
   const labResult = await prisma.labResult.create({
     data: {
       patientProfileId,
+      medicalRecordId,
       // Lekar koji narucuje uzima se iz sesije, ne iz tela zahteva.
       requestedByDoctorId: auth.user.id,
       testType,
